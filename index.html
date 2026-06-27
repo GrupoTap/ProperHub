@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>ProperHub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg-app:         #111827;
+      --bg-card:        #1F2937;
+      --bg-section:     #374151;
+      --accent:         #C0392B;
+      --accent-hover:   #A93226;
+      --btn-idle:       #374151;
+      --text-primary:   #F9FAFB;
+      --text-secondary: #9CA3AF;
+      --text-muted:     #6B7280;
+      --border:         #374151;
+      --success:        #27AE60;
+      --error:          #E74C3C;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-app);
+      color: var(--text-primary);
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── TELA DE LOGIN ──────────────────────────────────────────────────── */
+    #tela-login {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .login-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .logo-mark {
+      width: 64px;
+      height: 64px;
+      background: var(--accent);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .logo-text {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .login-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+    }
+
+    .pin-container {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .pin-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    #pin-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 24px;
+      letter-spacing: 8px;
+      color: var(--text-primary);
+      text-align: center;
+      min-height: 60px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #pin-input:focus { border-color: var(--accent); }
+
+    #pin-error {
+      min-height: 20px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--error);
+      text-align: center;
+    }
+
+    /* ── BOTÕES ─────────────────────────────────────────────────────────── */
+    .btn-primary {
+      width: 100%;
+      min-height: 56px;
+      background: var(--accent);
+      color: var(--text-primary);
+      border: none;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: background 0.15s;
+    }
+
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary:not(:disabled):hover { background: var(--accent-hover); }
+
+    .gas-aviso {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-align: center;
+      width: 100%;
+    }
+
+    /* ── TELA DE MENU ───────────────────────────────────────────────────── */
+    #tela-menu {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 16px 8px;
+      max-width: 480px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .menu-saudacao {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .menu-perfil {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .btn-sair {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      min-height: 36px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-sair:hover { border-color: var(--error); color: var(--error); }
+
+    .modulos-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── CARD DE MÓDULO ─────────────────────────────────────────────────── */
+    .modulo-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      min-height: 72px;
+      text-decoration: none;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .modulo-card:hover {
+      border-color: var(--accent);
+      background: #263146;
+    }
+
+    .card-icon {
+      width: 28px;
+      height: 28px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .card-icon svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .card-label {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .card-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── TELA 1: LOGIN ───────────────────────────────────────────────────── -->
+  <div id="tela-login">
+    <div class="login-logo">
+      <div class="logo-mark">P</div>
+      <div class="logo-text">Proper<span>Hub</span></div>
+    </div>
+    <div class="login-sub">ProperCare · Acesso unificado</div>
+
+    <div class="pin-container">
+      <label class="pin-label" for="pin-input">PIN de acesso</label>
+      <input id="pin-input" type="password" inputmode="numeric"
+             maxlength="6" placeholder="••••••"
+             autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') fazerLogin()">
+      <div id="pin-error" class="pin-error"></div>
+    </div>
+
+    <button id="btn-entrar" class="btn-primary" onclick="fazerLogin()">Entrar</button>
+    <div id="gas-aviso" class="gas-aviso" style="display:none">
+      Configure GAS_URL para ativar o login
+    </div>
+  </div>
+
+  <!-- ── TELA 2: MENU ────────────────────────────────────────────────────── -->
+  <div id="tela-menu" style="display:none">
+    <div class="menu-header">
+      <div>
+        <div class="menu-saudacao">Olá, <span id="menu-nome">—</span></div>
+        <div class="menu-perfil" id="menu-perfil">—</div>
+      </div>
+      <button class="btn-sair" onclick="sair()" aria-label="Sair">
+        Sair
+      </button>
+    </div>
+
+    <div id="modulos-grid" class="modulos-grid">
+      <!-- Cards gerados dinamicamente por renderMenu() -->
+    </div>
+  </div>
+
+  <script>
+    const GAS_URL = ''; // Preencher com a URL do Web App GAS v27 após deploy
+                        // Ex: https://script.google.com/macros/s/AKfy.../exec
+    // Se vazio, o app exibe aviso e não tenta login via GAS
+
+    const API_KEY = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 de 123456
+
+    const MODULOS = {
+      pcf_inspecao:   { label: 'Campo – Inspeção',        url: '../Proper_Field/index.html',              icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
+      pcf_preventiva: { label: 'Campo – Preventiva',      url: '../Proper_Field/index.html?modo=preventiva', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+      form08:         { label: 'Diagnóstico (Form 08)',    url: '../ProperForms/form08.html',              icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+      form09:         { label: 'Peritagem Mecânica',      url: '../ProperForms/form09.html',              icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+      form10:         { label: 'Peritagem Elétrica',      url: '../ProperForms/form10.html',              icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+      rotores:        { label: 'Ficha de Rotores',        url: '../ProperRotores/index.html',             icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
+      pcm_leitura:    { label: 'Administração',           url: '../Proper_Manager/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
+      pcm_completo:   { label: 'Administração',           url: '../Proper_Manager/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' }
+    };
+    // pcm_leitura e pcm_completo apontam para a mesma URL — módulo Administração aparece uma vez só no menu
+
+    // ── NAVEGAÇÃO ENTRE TELAS ──────────────────────────────────────────────
+    function mostrarTela(nome) {
+      document.getElementById('tela-login').style.display = nome === 'login' ? '' : 'none';
+      document.getElementById('tela-menu').style.display  = nome === 'menu'  ? '' : 'none';
+    }
+
+    // ── HASH DO PIN ────────────────────────────────────────────────────────
+    async function hashPin(pin) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(pin);
+      const buffer = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(buffer))
+        .map(function(b){ return b.toString(16).padStart(2, '0'); })
+        .join('');
+    }
+
+    // ── LOGIN ──────────────────────────────────────────────────────────────
+    async function fazerLogin() {
+      const pinInput = document.getElementById('pin-input');
+      const pin = pinInput.value.trim();
+      const errorEl = document.getElementById('pin-error');
+
+      errorEl.textContent = '';
+
+      if (!pin) {
+        errorEl.textContent = 'Digite seu PIN.';
+        pinInput.focus();
+        return;
+      }
+
+      const btn = document.getElementById('btn-entrar');
+      btn.disabled = true;
+      btn.textContent = 'Verificando...';
+
+      try {
+        const hash = await hashPin(pin);
+        const resp = await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ acao: 'loginTecnicoHub', pin_hash: hash, key: API_KEY })
+        });
+        const result = await resp.json();
+
+        if (result.status === 'ok' && result.valido) {
+          salvarSessao(result);
+          renderMenu(JSON.parse(sessionStorage.getItem('proper_session')));
+          mostrarTela('menu');
+        } else {
+          errorEl.textContent = result.error || 'PIN inválido ou técnico inativo.';
+          pinInput.value = '';
+          pinInput.focus();
+        }
+      } catch (err) {
+        errorEl.textContent = 'Erro de conexão. Tente novamente.';
+        pinInput.value = '';
+        pinInput.focus();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    }
+
+    // ── SALVAR SESSÃO ──────────────────────────────────────────────────────
+    function salvarSessao(result) {
+      const session = {
+        id_tecnico:   result.tecnico.id,
+        nome_tecnico: result.tecnico.nome,
+        id_perfil:    result.tecnico.id_perfil,
+        nome_perfil:  result.tecnico.nome_perfil,
+        modulos:      result.modulos,
+        is_admin:     result.is_admin,
+        token_at:     new Date().toISOString()
+      };
+      sessionStorage.setItem('proper_session', JSON.stringify(session));
+    }
+
+    // ── RENDERIZAR MENU ────────────────────────────────────────────────────
+    function renderMenu(session) {
+      document.getElementById('menu-nome').textContent   = session.nome_tecnico || '—';
+      document.getElementById('menu-perfil').textContent = session.nome_perfil  || '—';
+
+      const grid = document.getElementById('modulos-grid');
+      grid.innerHTML = '';
+
+      const modulos = session.modulos || [];
+      const temAdmin = modulos.includes('pcm_completo') || modulos.includes('pcm_leitura') || session.is_admin;
+      const mostrados = new Set();
+
+      modulos.forEach(function(id) {
+        if ((id === 'pcm_leitura' || id === 'pcm_completo') && !mostrados.has('admin')) {
+          if (temAdmin) {
+            mostrados.add('admin');
+            grid.appendChild(criarCard('pcm_completo'));
+          }
+          return;
+        }
+        if (!MODULOS[id] || mostrados.has(id)) return;
+        mostrados.add(id);
+        grid.appendChild(criarCard(id));
+      });
+
+      // Se is_admin e Administração não estava nos módulos
+      if (session.is_admin && !mostrados.has('admin')) {
+        grid.appendChild(criarCard('pcm_completo'));
+      }
+    }
+
+    function criarCard(id) {
+      const mod = MODULOS[id];
+      if (!mod) return document.createDocumentFragment();
+      const card = document.createElement('a');
+      card.href = mod.url;
+      card.className = 'modulo-card';
+      card.innerHTML =
+        '<div class="card-icon">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="' + mod.icon + '"/>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="card-label">' + mod.label + '</div>' +
+        '<div class="card-arrow">›</div>';
+      return card;
+    }
+
+    // ── SAIR ───────────────────────────────────────────────────────────────
+    function sair() {
+      sessionStorage.removeItem('proper_session');
+      mostrarTela('login');
+      document.getElementById('pin-input').value = '';
+      document.getElementById('pin-error').textContent = '';
+      document.getElementById('pin-input').focus();
+    }
+
+    // ── INICIALIZAÇÃO ──────────────────────────────────────────────────────
+    (function init() {
+      const raw = sessionStorage.getItem('proper_session');
+      if (raw) {
+        try {
+          const session = JSON.parse(raw);
+          const tokenAt = new Date(session.token_at).getTime();
+          const agora   = Date.now();
+          if (agora - tokenAt < 8 * 60 * 60 * 1000) {
+            renderMenu(session);
+            mostrarTela('menu');
+            return;
+          }
+        } catch(e) {}
+        sessionStorage.removeItem('proper_session');
+      }
+
+      if (!GAS_URL) {
+        document.getElementById('gas-aviso').style.display = 'block';
+        document.getElementById('btn-entrar').disabled = true;
+      }
+
+      document.getElementById('pin-input').focus();
+    })();
+  </script>
+</body>
+</html>
