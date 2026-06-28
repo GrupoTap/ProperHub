@@ -228,6 +228,22 @@
       background: #263146;
     }
 
+    /* ── CARD BLOQUEADO (sem acesso) ───────────────────────────────────── */
+    .modulo-card.bloqueado {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+      filter: grayscale(0.4);
+    }
+    .modulo-card.bloqueado .card-arrow {
+      display: none;
+    }
+    .card-lock {
+      color: var(--text-muted);
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
     .card-icon {
       width: 28px;
       height: 28px;
@@ -339,7 +355,7 @@
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub">ProperCare · Acesso unificado</div>
+    <div class="login-sub">ProperCare · Acesso unificado · v3</div>
 
     <div class="pin-container">
       <label class="pin-label" for="pin-input">PIN de acesso</label>
@@ -374,7 +390,7 @@
   </div>
 
   <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz_qSb4Ib6VoZs4TE15EYp9qO5sSEhrjadY71yK0Sd4vqnu4msidsObXnQtkCGXpIqq/exec'; // GAS v29
+    const GAS_URL = ''; // Preencher com a URL do Web App GAS v28 após deploy
                         // Ex: https://script.google.com/macros/s/AKfy.../exec
     // Se vazio, o app exibe aviso e não tenta login via GAS
 
@@ -529,6 +545,17 @@
     }
 
     // ── RENDERIZAR MENU ────────────────────────────────────────────────────
+    // Ordem de exibição canônica (sempre a mesma independente do perfil)
+    const ORDEM_MODULOS = [
+      'pcf_inspecao',
+      'pcf_preventiva',
+      'form08',
+      'form09',
+      'form10',
+      'rotores',
+      'pcm_completo'   // representa Administração (pcm_leitura e pcm_completo colapsados)
+    ];
+
     function renderMenu(session) {
       document.getElementById('menu-nome').textContent   = session.nome_tecnico || '—';
       document.getElementById('menu-perfil').textContent = session.nome_perfil  || '—';
@@ -537,43 +564,51 @@
       grid.innerHTML = '';
 
       const modulos = session.modulos || [];
+      // Normaliza: pcm_leitura e pcm_completo → representados por 'pcm_completo'
       const temAdmin = modulos.includes('pcm_completo') || modulos.includes('pcm_leitura') || session.is_admin;
-      const mostrados = new Set();
+      const setAcesso = new Set(modulos);
+      if (temAdmin) setAcesso.add('pcm_completo');
 
-      modulos.forEach(function(id) {
-        if ((id === 'pcm_leitura' || id === 'pcm_completo') && !mostrados.has('admin')) {
-          if (temAdmin) {
-            mostrados.add('admin');
-            grid.appendChild(criarCard('pcm_completo'));
-          }
-          return;
-        }
-        if (!MODULOS[id] || mostrados.has(id)) return;
-        mostrados.add(id);
-        grid.appendChild(criarCard(id));
+      ORDEM_MODULOS.forEach(function(id) {
+        if (!MODULOS[id]) return;
+        const temAcesso = setAcesso.has(id);
+        grid.appendChild(criarCard(id, temAcesso));
       });
-
-      // Se is_admin e Administração não estava nos módulos
-      if (session.is_admin && !mostrados.has('admin')) {
-        grid.appendChild(criarCard('pcm_completo'));
-      }
     }
 
-    function criarCard(id) {
+    function criarCard(id, temAcesso) {
       const mod = MODULOS[id];
       if (!mod) return document.createDocumentFragment();
-      const card = document.createElement('a');
-      card.href = mod.url;
-      card.className = 'modulo-card';
-      card.innerHTML =
-        '<div class="card-icon">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-            '<path d="' + mod.icon + '"/>' +
-          '</svg>' +
-        '</div>' +
-        '<div class="card-label">' + mod.label + '</div>' +
-        '<div class="card-arrow">›</div>';
-      return card;
+
+      if (temAcesso) {
+        // Card clicável normal
+        const card = document.createElement('a');
+        card.href = mod.url;
+        card.className = 'modulo-card';
+        card.innerHTML =
+          '<div class="card-icon">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+              '<path d="' + mod.icon + '"/>' +
+            '</svg>' +
+          '</div>' +
+          '<div class="card-label">' + mod.label + '</div>' +
+          '<div class="card-arrow">›</div>';
+        return card;
+      } else {
+        // Card esmaecido — sem acesso
+        const card = document.createElement('div');
+        card.className = 'modulo-card bloqueado';
+        card.setAttribute('aria-disabled', 'true');
+        card.innerHTML =
+          '<div class="card-icon">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+              '<path d="' + mod.icon + '"/>' +
+            '</svg>' +
+          '</div>' +
+          '<div class="card-label">' + mod.label + '</div>' +
+          '<div class="card-lock">🔒</div>';
+        return card;
+      }
     }
 
     // ── SAIR ───────────────────────────────────────────────────────────────
