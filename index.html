@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>ProperHub</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -249,9 +250,88 @@
       color: var(--text-muted);
       font-size: 18px;
     }
+
+    /* ── TELA 0: GOOGLE SIGN-IN ──────────────────────────────────────────── */
+    #tela-google {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .google-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+    .google-btn-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+    }
+    #g_id_signin {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+    .btn-google-manual {
+      width: 100%;
+      min-height: 52px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-google-manual:hover { border-color: var(--accent); }
+    .google-error {
+      min-height: 20px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--error);
+      text-align: center;
+    }
   </style>
 </head>
 <body>
+
+  <!-- ── TELA 0: GOOGLE SIGN-IN ──────────────────────────────────────────── -->
+  <div id="tela-google" style="display:none">
+    <div class="login-logo">
+      <div class="logo-mark">P</div>
+      <div class="logo-text">Proper<span>Hub</span></div>
+    </div>
+    <p class="google-subtitle">
+      Acesso exclusivo para a equipe<br>Proper Compressores
+    </p>
+    <div class="google-btn-area">
+      <div id="g_id_signin"></div>
+      <button class="btn-google-manual" onclick="iniciarGoogleLoginManual()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+          <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+        </svg>
+        Entrar com Google Workspace
+      </button>
+    </div>
+    <div id="google-error" class="google-error"></div>
+  </div>
 
   <!-- ── TELA 1: LOGIN ───────────────────────────────────────────────────── -->
   <div id="tela-login">
@@ -294,28 +374,31 @@
   </div>
 
   <script>
-    const GAS_URL = ''; // Preencher com a URL do Web App GAS v27 após deploy
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz_qSb4Ib6VoZs4TE15EYp9qO5sSEhrjadY71yK0Sd4vqnu4msidsObXnQtkCGXpIqq/exec'; // GAS v29
                         // Ex: https://script.google.com/macros/s/AKfy.../exec
     // Se vazio, o app exibe aviso e não tenta login via GAS
 
     const API_KEY = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 de 123456
+    const GOOGLE_CLIENT_ID = '652411334243-4aqc4jg63obagavf6nukldc6o2u4kgn3.apps.googleusercontent.com';
+    let _googleCredential = null;
 
     const MODULOS = {
-      pcf_inspecao:   { label: 'Campo – Inspeção',        url: '../Proper_Field/index.html',              icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
-      pcf_preventiva: { label: 'Campo – Preventiva',      url: '../Proper_Field/index.html?modo=preventiva', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+      pcf_inspecao:   { label: 'Campo – Inspeção',        url: '../ProperTech/index.html',              icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
+      pcf_preventiva: { label: 'Campo – Preventiva',      url: '../ProperTech/index.html?modo=preventiva', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
       form08:         { label: 'Diagnóstico (Form 08)',    url: '../ProperForms/form08.html',              icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
       form09:         { label: 'Peritagem Mecânica',      url: '../ProperForms/form09.html',              icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
       form10:         { label: 'Peritagem Elétrica',      url: '../ProperForms/form10.html',              icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
       rotores:        { label: 'Ficha de Rotores',        url: '../ProperRotores/index.html',             icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
-      pcm_leitura:    { label: 'Administração',           url: '../Proper_Manager/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
-      pcm_completo:   { label: 'Administração',           url: '../Proper_Manager/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' }
+      pcm_leitura:    { label: 'Administração',           url: '../ProperAdmin/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
+      pcm_completo:   { label: 'Administração',           url: '../ProperAdmin/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' }
     };
     // pcm_leitura e pcm_completo apontam para a mesma URL — módulo Administração aparece uma vez só no menu
 
     // ── NAVEGAÇÃO ENTRE TELAS ──────────────────────────────────────────────
     function mostrarTela(nome) {
-      document.getElementById('tela-login').style.display = nome === 'login' ? '' : 'none';
-      document.getElementById('tela-menu').style.display  = nome === 'menu'  ? '' : 'none';
+      document.getElementById('tela-google').style.display = nome === 'google' ? '' : 'none';
+      document.getElementById('tela-login').style.display  = nome === 'login'  ? '' : 'none';
+      document.getElementById('tela-menu').style.display   = nome === 'menu'   ? '' : 'none';
     }
 
     // ── HASH DO PIN ────────────────────────────────────────────────────────
@@ -328,6 +411,50 @@
         .join('');
     }
 
+    // ── GOOGLE IDENTITY SERVICES ──────────────────────────────────────────
+
+    function onGoogleCallback(response) {
+      _googleCredential = response.credential;
+      document.getElementById('google-error').textContent = '';
+      mostrarTela('login');
+      document.getElementById('pin-input').focus();
+    }
+
+    function credentialValido(credential) {
+      try {
+        if (!credential) return false;
+        var payload = JSON.parse(atob(credential.split('.')[1]));
+        return payload.exp > Math.floor(Date.now() / 1000);
+      } catch(e) { return false; }
+    }
+
+    function inicializarGIS() {
+      if (typeof google === 'undefined' || !google.accounts) {
+        setTimeout(inicializarGIS, 500);
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id:             GOOGLE_CLIENT_ID,
+        callback:              onGoogleCallback,
+        auto_select:           true,
+        cancel_on_tap_outside: false
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('g_id_signin'),
+        { theme: 'filled_black', size: 'large', text: 'signin_with', width: 300 }
+      );
+      google.accounts.id.prompt(function(notification) {});
+    }
+
+    function iniciarGoogleLoginManual() {
+      if (typeof google === 'undefined' || !google.accounts) {
+        document.getElementById('google-error').textContent =
+          'Erro: Google Identity Services não carregou. Verifique sua conexão.';
+        return;
+      }
+      google.accounts.id.prompt();
+    }
+
     // ── LOGIN ──────────────────────────────────────────────────────────────
     async function fazerLogin() {
       const pinInput = document.getElementById('pin-input');
@@ -335,6 +462,12 @@
       const errorEl = document.getElementById('pin-error');
 
       errorEl.textContent = '';
+
+      if (!_googleCredential || !credentialValido(_googleCredential)) {
+        _googleCredential = null;
+        mostrarTela('google');
+        return;
+      }
 
       if (!pin) {
         errorEl.textContent = 'Digite seu PIN.';
@@ -350,7 +483,13 @@
         const hash = await hashPin(pin);
         const resp = await fetch(GAS_URL, {
           method: 'POST',
-          body: JSON.stringify({ acao: 'loginTecnicoHub', pin_hash: hash, key: API_KEY })
+          body: JSON.stringify({
+            acao:              'loginTecnicoHub',
+            action:            'loginTecnicoHub',
+            pin_hash:          hash,
+            key:               API_KEY,
+            google_credential: _googleCredential || ''
+          })
         });
         const result = await resp.json();
 
@@ -376,13 +515,15 @@
     // ── SALVAR SESSÃO ──────────────────────────────────────────────────────
     function salvarSessao(result) {
       const session = {
-        id_tecnico:   result.tecnico.id,
-        nome_tecnico: result.tecnico.nome,
-        id_perfil:    result.tecnico.id_perfil,
-        nome_perfil:  result.tecnico.nome_perfil,
-        modulos:      result.modulos,
-        is_admin:     result.is_admin,
-        token_at:     new Date().toISOString()
+        id_tecnico:        result.tecnico.id,
+        nome_tecnico:      result.tecnico.nome,
+        id_perfil:         result.tecnico.id_perfil,
+        nome_perfil:       result.tecnico.nome_perfil,
+        modulos:           result.modulos,
+        is_admin:          result.is_admin,
+        google_email:      result.google_email      || '',
+        google_credential: _googleCredential        || '',
+        token_at:          new Date().toISOString()
       };
       sessionStorage.setItem('proper_session', JSON.stringify(session));
     }
@@ -438,10 +579,13 @@
     // ── SAIR ───────────────────────────────────────────────────────────────
     function sair() {
       sessionStorage.removeItem('proper_session');
-      mostrarTela('login');
+      _googleCredential = null;
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        google.accounts.id.disableAutoSelect();
+      }
+      mostrarTela('google');
       document.getElementById('pin-input').value = '';
       document.getElementById('pin-error').textContent = '';
-      document.getElementById('pin-input').focus();
     }
 
     // ── INICIALIZAÇÃO ──────────────────────────────────────────────────────
@@ -450,23 +594,25 @@
       if (raw) {
         try {
           const session = JSON.parse(raw);
-          const tokenAt = new Date(session.token_at).getTime();
-          const agora   = Date.now();
-          if (agora - tokenAt < 8 * 60 * 60 * 1000) {
-            renderMenu(session);
-            mostrarTela('menu');
-            return;
+          if (session.google_credential && credentialValido(session.google_credential)) {
+            _googleCredential = session.google_credential;
+            const tokenAt = new Date(session.token_at).getTime();
+            if (Date.now() - tokenAt < 8 * 60 * 60 * 1000) {
+              renderMenu(session);
+              mostrarTela('menu');
+              return;
+            }
           }
         } catch(e) {}
         sessionStorage.removeItem('proper_session');
+        _googleCredential = null;
       }
-
       if (!GAS_URL) {
         document.getElementById('gas-aviso').style.display = 'block';
         document.getElementById('btn-entrar').disabled = true;
       }
-
-      document.getElementById('pin-input').focus();
+      mostrarTela('google');
+      inicializarGIS();
     })();
   </script>
 </body>
