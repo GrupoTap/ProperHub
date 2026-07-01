@@ -291,29 +291,36 @@
       align-items: center;
       gap: 16px;
       width: 100%;
+      position: relative;
     }
     #g_id_signin {
       display: flex;
       justify-content: center;
       width: 100%;
     }
-    .btn-google-manual {
-      width: 100%;
-      min-height: 52px;
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: border-color 0.15s;
-      display: flex;
+    .google-loading {
+      display: none;
+      position: absolute;
+      inset: 0;
       align-items: center;
       justify-content: center;
       gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      min-height: 44px;
     }
-    .btn-google-manual:hover { border-color: var(--accent); }
+    .google-loading .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: proper-spin 0.7s linear infinite;
+    }
+    @keyframes proper-spin { to { transform: rotate(360deg); } }
     .google-error {
       min-height: 20px;
       margin-top: 12px;
@@ -336,15 +343,10 @@
     </p>
     <div class="google-btn-area">
       <div id="g_id_signin"></div>
-      <button class="btn-google-manual" onclick="iniciarGoogleLoginManual()">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-          <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
-        </svg>
-        Entrar com Google Workspace
-      </button>
+      <div id="google-loading" class="google-loading">
+        <span class="spinner"></span>
+        <span>Conectando…</span>
+      </div>
     </div>
     <div id="google-error" class="google-error"></div>
   </div>
@@ -378,8 +380,8 @@
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
       <input id="pin-input" type="password" inputmode="numeric"
-             maxlength="6" placeholder="••••••"
-             autocomplete="current-password"
+             maxlength="6" placeholder="Digite seu PIN"
+             autocomplete="off"
              onkeydown="if(event.key==='Enter') fazerLogin()">
       <div id="pin-error" class="pin-error"></div>
     </div>
@@ -537,21 +539,17 @@
         document.getElementById('g_id_signin'),
         { theme: 'filled_black', size: 'large', text: 'signin_with', width: 300 }
       );
-      google.accounts.id.prompt(function(notification) {});
-    }
-
-    function iniciarGoogleLoginManual() {
-      if (typeof google === 'undefined' || !google.accounts) {
-        document.getElementById('google-error').textContent =
-          'Erro: Google Identity Services não carregou. Verifique sua conexão.';
-        return;
-      }
-      google.accounts.id.prompt();
+      // Removido o disparo manual de prompt() logo após renderButton: as duas
+      // chamadas competiam pelo mesmo estado de credencial do Google e causavam
+      // a instabilidade relatada (precisar clicar mais de uma vez / escolher a
+      // conta de novo). O botão renderizado acima já é suficiente e é o método
+      // atualmente recomendado pelo Google.
     }
 
     // ── CONSULTAR USUÁRIOS (GAS Modo A) ───────────────────────────────────
     async function consultarUsuarios() {
       document.getElementById('google-error').textContent = '';
+      document.getElementById('google-loading').style.display = 'flex';
       try {
         const resp = await fetch(GAS_URL, {
           method: 'POST',
@@ -593,6 +591,8 @@
         }
       } catch(err) {
         document.getElementById('google-error').textContent = 'Erro de conexão. Tente novamente.';
+      } finally {
+        document.getElementById('google-loading').style.display = 'none';
       }
     }
 
