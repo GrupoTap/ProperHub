@@ -289,14 +289,46 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       width: 100%;
       position: relative;
+    }
+    .google-btn-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      animation: proper-hint-bounce 1.6s ease-in-out infinite;
+    }
+    @keyframes proper-hint-bounce {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(4px); }
+    }
+    .google-btn-frame {
+      width: 100%;
+      max-width: 300px;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1.5px solid var(--accent);
+      background: rgba(192, 57, 43, 0.08);
+      box-shadow: 0 0 0 4px rgba(192, 57, 43, 0.08);
+      display: flex;
+      justify-content: center;
     }
     #g_id_signin {
       display: flex;
       justify-content: center;
       width: 100%;
+      cursor: pointer;
+    }
+    .google-btn-subtext {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.4;
     }
     .google-loading {
       display: none;
@@ -342,7 +374,16 @@
       Acesso exclusivo para a equipe<br>Proper Compressores
     </p>
     <div class="google-btn-area">
-      <div id="g_id_signin"></div>
+      <div class="google-btn-hint">
+        <span>👇</span>
+        <span>Toque no botão abaixo para continuar</span>
+      </div>
+      <div class="google-btn-frame">
+        <div id="g_id_signin"></div>
+      </div>
+      <div class="google-btn-subtext">
+        Depois de confirmar sua conta Google, você digita seu PIN de acesso.
+      </div>
       <div id="google-loading" class="google-loading">
         <span class="spinner"></span>
         <span>Conectando…</span>
