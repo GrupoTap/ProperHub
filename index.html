@@ -503,6 +503,20 @@
   </div>
 
   <script>
+    // ══════════════════════════════════════════════════════════════════════
+    // CHANGELOG v10 (Sprint: segurança do login + sessão resiliente)
+    // ══════════════════════════════════════════════════════════════════════
+    // - Sessão agora é gravada em localStorage E sessionStorage (helpers
+    //   salvarSessaoStorage/lerSessaoStorage/limparSessaoStorage). Sobrevive
+    //   a fechar o app/aba em campo sem sinal, sem exigir novo login — mesma
+    //   janela de validade de sempre (8h via token_at), só muda onde fica
+    //   guardado. sessionStorage mantido por compatibilidade com o PCM
+    //   (fora do escopo desta rodada, ainda só lê sessionStorage).
+    // - Depende de GAS_properCare_v44.js: verificarGoogleToken_ agora valida
+    //   a assinatura do JWT de verdade (endpoint tokeninfo do Google) em vez
+    //   de só decodificar o payload; loginUsuarioHub ganhou rate-limit de
+    //   tentativas de PIN (5 erradas = 5 min de bloqueio).
+    // ══════════════════════════════════════════════════════════════════════
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbz_qSb4Ib6VoZs4TE15EYp9qO5sSEhrjadY71yK0Sd4vqnu4msidsObXnQtkCGXpIqq/exec';
     // GAS v32 — atualizar aqui sempre que um novo deploy for feito
 
@@ -529,6 +543,28 @@
       pcm_completo:   { label: 'Administração',           url: '../ProperAdmin/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' }
     };
     // pcm_leitura e pcm_completo apontam para a mesma URL — módulo Administração aparece uma vez só no menu
+
+    // ── SESSÃO RESILIENTE A BAIXA CONECTIVIDADE ────────────────────────────
+    // v10 — grava em localStorage (sobrevive a fechar o app/aba — essencial em
+    // campo sem sinal) E em sessionStorage (mantém compatibilidade com o PCM,
+    // que por enquanto só lê sessionStorage — fora do escopo desta rodada).
+    // Mesma janela de validade de sempre (8h via token_at), só muda onde fica
+    // guardado.
+    function salvarSessaoStorage(json) {
+      try { localStorage.setItem('proper_session', json); } catch(e) {}
+      try { sessionStorage.setItem('proper_session', json); } catch(e) {}
+    }
+    function lerSessaoStorage() {
+      try {
+        return localStorage.getItem('proper_session') || sessionStorage.getItem('proper_session');
+      } catch(e) {
+        try { return sessionStorage.getItem('proper_session'); } catch(e2) { return null; }
+      }
+    }
+    function limparSessaoStorage() {
+      try { localStorage.removeItem('proper_session'); } catch(e) {}
+      try { sessionStorage.removeItem('proper_session'); } catch(e) {}
+    }
 
     // ── NAVEGAÇÃO ENTRE TELAS ──────────────────────────────────────────────
     function mostrarTela(nome) {
@@ -718,7 +754,7 @@
 
         if (result.status === 'ok' && result.valido) {
           salvarSessao(result);
-          renderMenu(JSON.parse(sessionStorage.getItem('proper_session')));
+          renderMenu(JSON.parse(lerSessaoStorage()));
           mostrarTela('menu');
         } else {
           errorEl.textContent = result.error || 'PIN inválido ou técnico inativo.';
@@ -752,9 +788,8 @@
         google_credential: _googleCredential        || '',
         token_at:          new Date().toISOString()
       };
-      sessionStorage.setItem('proper_session', JSON.stringify(session));
+      salvarSessaoStorage(JSON.stringify(session));
     }
-
     // ── RENDERIZAR MENU ────────────────────────────────────────────────────
     // Ordem de exibição canônica (sempre a mesma independente do perfil)
     const ORDEM_MODULOS = [
@@ -837,7 +872,7 @@
 
     // ── SAIR ───────────────────────────────────────────────────────────────
     function sair() {
-      sessionStorage.removeItem('proper_session');
+      limparSessaoStorage();
       _googleCredential = null;
       _idTecnico        = null;
       _nomeTecnico      = null;
@@ -852,7 +887,7 @@
 
     // ── INICIALIZAÇÃO ──────────────────────────────────────────────────────
     (function init() {
-      const raw = sessionStorage.getItem('proper_session');
+      const raw = lerSessaoStorage();
       if (raw) {
         try {
           const session = JSON.parse(raw);
@@ -866,7 +901,7 @@
             }
           }
         } catch(e) {}
-        sessionStorage.removeItem('proper_session');
+        limparSessaoStorage();
         _googleCredential = null;
       }
       if (!GAS_URL) {
