@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>ProperHub</title>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -267,148 +266,9 @@
       font-size: 18px;
     }
 
-    /* ── TELA 0: GOOGLE SIGN-IN ──────────────────────────────────────────── */
-    #tela-google {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      max-width: 400px;
-      margin: 0 auto;
-    }
-    .google-subtitle {
-      font-size: 14px;
-      color: var(--text-secondary);
-      text-align: center;
-      margin-bottom: 32px;
-      line-height: 1.5;
-    }
-    .google-btn-area {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      width: 100%;
-      position: relative;
-    }
-    .google-btn-hint {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--accent);
-      animation: proper-hint-bounce 1.6s ease-in-out infinite;
-    }
-    @keyframes proper-hint-bounce {
-      0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(4px); }
-    }
-    .google-btn-frame {
-      width: 100%;
-      max-width: 300px;
-      padding: 10px;
-      border-radius: 14px;
-      border: 1.5px solid var(--accent);
-      background: rgba(192, 57, 43, 0.08);
-      box-shadow: 0 0 0 4px rgba(192, 57, 43, 0.08);
-      display: flex;
-      justify-content: center;
-    }
-    #g_id_signin {
-      display: flex;
-      justify-content: center;
-      width: 100%;
-      cursor: pointer;
-    }
-    .google-btn-subtext {
-      font-size: 12.5px;
-      color: var(--text-muted);
-      text-align: center;
-      max-width: 300px;
-      line-height: 1.4;
-    }
-    .google-loading {
-      display: none;
-      position: absolute;
-      inset: 0;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text-secondary);
-      font-size: 14px;
-      min-height: 44px;
-    }
-    .google-loading .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: proper-spin 0.7s linear infinite;
-    }
-    @keyframes proper-spin { to { transform: rotate(360deg); } }
-    .google-error {
-      min-height: 20px;
-      margin-top: 12px;
-      font-size: 13px;
-      color: var(--error);
-      text-align: center;
-    }
   </style>
 </head>
 <body>
-
-  <!-- ── TELA 0: GOOGLE SIGN-IN ──────────────────────────────────────────── -->
-  <div id="tela-google" style="display:none">
-    <div class="login-logo">
-      <div class="logo-mark">P</div>
-      <div class="logo-text">Proper<span>Hub</span></div>
-    </div>
-    <p class="google-subtitle">
-      Acesso exclusivo para a equipe<br>Proper Compressores
-    </p>
-    <div class="google-btn-area">
-      <div class="google-btn-hint">
-        <span>👇</span>
-        <span>Toque no botão abaixo para continuar</span>
-      </div>
-      <div class="google-btn-frame">
-        <div id="g_id_signin"></div>
-      </div>
-      <div class="google-btn-subtext">
-        Depois de confirmar sua conta Google, você digita seu PIN de acesso.
-      </div>
-      <div id="google-loading" class="google-loading">
-        <span class="spinner"></span>
-        <span>Conectando…</span>
-      </div>
-    </div>
-    <div id="google-error" class="google-error"></div>
-  </div>
-
-  <!-- ── TELA DE SELEÇÃO DE USUÁRIO ─────────────────────────────────────── -->
-  <div id="tela-selecao" style="display:none">
-    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;max-width:400px;margin:0 auto">
-      <div class="login-logo">
-        <div class="logo-mark">P</div>
-        <div class="logo-text">Proper<span>Hub</span></div>
-      </div>
-      <p style="font-size:14px;color:var(--text-secondary);text-align:center;margin-bottom:28px;line-height:1.5">
-        Quem está acessando?
-      </p>
-      <div id="lista-usuarios" style="width:100%;display:flex;flex-direction:column;gap:10px"></div>
-      <div id="selecao-error" style="min-height:20px;margin-top:12px;font-size:13px;color:var(--error);text-align:center"></div>
-      <button class="btn-primary" style="margin-top:20px;background:transparent;border:1px solid var(--border);color:var(--text-secondary);font-size:14px;min-height:44px" onclick="voltarParaGoogle()">
-        ← Trocar conta Google
-      </button>
-    </div>
-  </div>
 
   <!-- ── TELA 1: LOGIN ───────────────────────────────────────────────────── -->
   <div id="tela-login">
@@ -504,27 +364,40 @@
 
   <script>
     // ══════════════════════════════════════════════════════════════════════
-    // CHANGELOG v10 (Sprint: segurança do login + sessão resiliente)
+    // CHANGELOG v12 (Reconecta módulos/is_admin vindos do loginTecnico)
     // ══════════════════════════════════════════════════════════════════════
-    // - Sessão agora é gravada em localStorage E sessionStorage (helpers
-    //   salvarSessaoStorage/lerSessaoStorage/limparSessaoStorage). Sobrevive
-    //   a fechar o app/aba em campo sem sinal, sem exigir novo login — mesma
-    //   janela de validade de sempre (8h via token_at), só muda onde fica
-    //   guardado. sessionStorage mantido por compatibilidade com o PCM
-    //   (fora do escopo desta rodada, ainda só lê sessionStorage).
-    // - Depende de GAS_properCare_v44.js: verificarGoogleToken_ agora valida
-    //   a assinatura do JWT de verdade (endpoint tokeninfo do Google) em vez
-    //   de só decodificar o payload; loginUsuarioHub ganhou rate-limit de
-    //   tentativas de PIN (5 erradas = 5 min de bloqueio).
+    // - salvarSessao(result): agora grava session.modulos e session.is_admin a
+    //   partir de result.tecnico.modulos / result.tecnico.is_admin. Esses dois
+    //   campos passaram a vir do backend em loginTecnico (GAS_properCare_v47.js)
+    //   mas não eram copiados para a sessão — renderMenu() já esperava
+    //   session.modulos/session.is_admin, então até aqui o menu ficava sempre
+    //   bloqueado (nenhum módulo aparecia liberado) mesmo com login válido.
+    // ══════════════════════════════════════════════════════════════════════
+    // CHANGELOG v11 (Rollback: remoção da camada de acesso Google)
+    // ══════════════════════════════════════════════════════════════════════
+    // - Removidas as telas 'tela-google' (login com Google) e 'tela-selecao'
+    //   (seleção de usuário por e-mail) e todo o fluxo que elas suportavam.
+    //   Motivo: a camada OAuth por domínio estava instável (lentidão, falhas
+    //   de conexão intermitentes) e consumindo tempo demais para estabilizar;
+    //   o PCF é prioridade agora. Ver GAS_properCare_v46.js para o rollback
+    //   equivalente no backend.
+    // - Removido o carregamento do script do Google Identity Services
+    //   (accounts.google.com/gsi/client) e as funções inicializarGIS,
+    //   onGoogleCallback, credentialValido, consultarUsuarios, renderSelecao,
+    //   atualizarLabelPin, voltarParaGoogle, e as variáveis _googleCredential,
+    //   GOOGLE_CLIENT_ID, _idTecnico, _nomeTecnico — todas exclusivas do fluxo
+    //   Google/seleção de usuário. Isso também elimina a dependência de
+    //   FedCM/cookies de terceiros suspeita de causar falha no Chrome mobile.
+    // - Tela inicial do app volta a ser diretamente 'tela-login' (campo de
+    //   PIN), sem depender de nenhuma etapa anterior.
+    // - fazerLogin(): chama action 'loginTecnico' (em vez de 'loginTecnicoHub')
+    //   e não envia mais google_credential/id_tecnico — loginTecnico identifica
+    //   o usuário só pelo pin_hash.
     // ══════════════════════════════════════════════════════════════════════
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbz_qSb4Ib6VoZs4TE15EYp9qO5sSEhrjadY71yK0Sd4vqnu4msidsObXnQtkCGXpIqq/exec';
-    // GAS v32 — atualizar aqui sempre que um novo deploy for feito
+    // GAS v47 — atualizar aqui sempre que um novo deploy for feito
 
     const API_KEY = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 de 123456
-    const GOOGLE_CLIENT_ID = '652411334243-4aqc4jg63obagavf6nukldc6o2u4kgn3.apps.googleusercontent.com';
-    let _googleCredential = null;
-    let _idTecnico   = null;  // id do técnico selecionado (ou único)
-    let _nomeTecnico = null;  // nome do técnico selecionado (para exibir na tela de PIN)
 
     const MODULOS = {
       pcf_inspecao:   { label: 'Campo – Inspeção',        url: '../ProperTech/index.html',              icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
@@ -568,10 +441,8 @@
 
     // ── NAVEGAÇÃO ENTRE TELAS ──────────────────────────────────────────────
     function mostrarTela(nome) {
-      document.getElementById('tela-google').style.display  = nome === 'google'  ? '' : 'none';
-      document.getElementById('tela-selecao').style.display = nome === 'selecao' ? '' : 'none';
-      document.getElementById('tela-login').style.display   = nome === 'login'   ? '' : 'none';
-      document.getElementById('tela-menu').style.display    = nome === 'menu'    ? '' : 'none';
+      document.getElementById('tela-login').style.display = nome === 'login' ? '' : 'none';
+      document.getElementById('tela-menu').style.display  = nome === 'menu'  ? '' : 'none';
     }
 
     // ── HASH DO PIN ────────────────────────────────────────────────────────
@@ -584,135 +455,6 @@
         .join('');
     }
 
-    // ── GOOGLE IDENTITY SERVICES ──────────────────────────────────────────
-
-    function onGoogleCallback(response) {
-      _googleCredential = response.credential;
-      document.getElementById('google-error').textContent = '';
-      // Em vez de ir direto para 'login', consulta o GAS primeiro (Modo A)
-      consultarUsuarios();
-    }
-
-    function credentialValido(credential) {
-      try {
-        if (!credential) return false;
-        var payload = JSON.parse(atob(credential.split('.')[1]));
-        return payload.exp > Math.floor(Date.now() / 1000);
-      } catch(e) { return false; }
-    }
-
-    function inicializarGIS() {
-      if (typeof google === 'undefined' || !google.accounts) {
-        setTimeout(inicializarGIS, 500);
-        return;
-      }
-      google.accounts.id.initialize({
-        client_id:             GOOGLE_CLIENT_ID,
-        callback:              onGoogleCallback,
-        auto_select:           true,
-        cancel_on_tap_outside: false
-      });
-      google.accounts.id.renderButton(
-        document.getElementById('g_id_signin'),
-        { theme: 'filled_black', size: 'large', text: 'signin_with', width: 300 }
-      );
-      // Removido o disparo manual de prompt() logo após renderButton: as duas
-      // chamadas competiam pelo mesmo estado de credencial do Google e causavam
-      // a instabilidade relatada (precisar clicar mais de uma vez / escolher a
-      // conta de novo). O botão renderizado acima já é suficiente e é o método
-      // atualmente recomendado pelo Google.
-    }
-
-    // ── CONSULTAR USUÁRIOS (GAS Modo A) ───────────────────────────────────
-    async function consultarUsuarios() {
-      document.getElementById('google-error').textContent = '';
-      document.getElementById('google-loading').style.display = 'flex';
-      try {
-        const resp = await fetch(GAS_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            acao:              'loginTecnicoHub',
-            action:            'loginTecnicoHub',
-            key:               API_KEY,
-            google_credential: _googleCredential || ''
-            // sem pin_hash → Modo A
-          })
-        });
-        const result = await resp.json();
-
-        if (!result || result.status !== 'ok') {
-          document.getElementById('google-error').textContent =
-            (result && result.error) || 'Erro ao consultar usuários.';
-          return;
-        }
-
-        if (!result.valido && result.error) {
-          // 0 usuários para este e-mail
-          document.getElementById('google-error').textContent = result.error;
-          return;
-        }
-
-        if (result.modo === 'pin_direto') {
-          // 1 usuário → vai direto para PIN
-          _idTecnico   = result.tecnico_id;
-          _nomeTecnico = result.tecnico_nome;
-          mostrarTela('login');
-          atualizarLabelPin();
-          document.getElementById('pin-input').focus();
-        } else if (result.modo === 'selecao') {
-          // 2+ usuários → tela de seleção
-          renderSelecao(result.usuarios);
-          mostrarTela('selecao');
-        } else {
-          document.getElementById('google-error').textContent = 'Resposta inesperada do servidor.';
-        }
-      } catch(err) {
-        document.getElementById('google-error').textContent = 'Erro de conexão. Tente novamente.';
-      } finally {
-        document.getElementById('google-loading').style.display = 'none';
-      }
-    }
-
-    // ── RENDERIZAR LISTA DE SELEÇÃO ────────────────────────────────────────
-    function renderSelecao(usuarios) {
-      const lista = document.getElementById('lista-usuarios');
-      lista.innerHTML = '';
-      usuarios.forEach(function(u) {
-        const btn = document.createElement('button');
-        btn.className = 'btn-primary';
-        btn.style.cssText = 'margin-top:0;font-size:17px';
-        btn.textContent = u.nome;
-        btn.onclick = function() {
-          _idTecnico   = u.id;
-          _nomeTecnico = u.nome;
-          document.getElementById('selecao-error').textContent = '';
-          mostrarTela('login');
-          atualizarLabelPin();
-          document.getElementById('pin-input').focus();
-        };
-        lista.appendChild(btn);
-      });
-    }
-
-    // ── LABEL DINÂMICO NA TELA DE PIN ─────────────────────────────────────
-    function atualizarLabelPin() {
-      const lbl = document.getElementById('pin-label');
-      if (lbl) {
-        lbl.textContent = _nomeTecnico
-          ? 'PIN de ' + _nomeTecnico
-          : 'PIN de acesso';
-      }
-    }
-
-    // ── VOLTAR PARA GOOGLE ─────────────────────────────────────────────────
-    function voltarParaGoogle() {
-      _idTecnico   = null;
-      _nomeTecnico = null;
-      document.getElementById('pin-input').value = '';
-      document.getElementById('pin-error').textContent = '';
-      mostrarTela('google');
-    }
-
     // ── LOGIN ──────────────────────────────────────────────────────────────
     async function fazerLogin() {
       const pinInput = document.getElementById('pin-input');
@@ -720,12 +462,6 @@
       const errorEl = document.getElementById('pin-error');
 
       errorEl.textContent = '';
-
-      if (!_googleCredential || !credentialValido(_googleCredential)) {
-        _googleCredential = null;
-        mostrarTela('google');
-        return;
-      }
 
       if (!pin) {
         errorEl.textContent = 'Digite seu PIN.';
@@ -742,12 +478,10 @@
         const resp = await fetch(GAS_URL, {
           method: 'POST',
           body: JSON.stringify({
-            acao:              'loginTecnicoHub',
-            action:            'loginTecnicoHub',
-            pin_hash:          hash,
-            id_tecnico:        _idTecnico || '',   // identifica o técnico específico
-            key:               API_KEY,
-            google_credential: _googleCredential || ''
+            acao:      'loginTecnico',
+            action:    'loginTecnico',
+            pin_hash:  hash,
+            key:       API_KEY
           })
         });
         const result = await resp.json();
@@ -774,19 +508,16 @@
     // ── SALVAR SESSÃO ──────────────────────────────────────────────────────
     function salvarSessao(result) {
       const session = {
-        id_tecnico:        result.tecnico.id,
-        nome_tecnico:      result.tecnico.nome,
+        id_tecnico:   result.tecnico.id,
+        nome_tecnico: result.tecnico.nome,
         tecnico: {
           id:   result.tecnico.id,
           nome: result.tecnico.nome
         },
-        id_perfil:         result.tecnico.id_perfil,
-        nome_perfil:       result.tecnico.nome_perfil,
-        modulos:           result.modulos,
-        is_admin:          result.is_admin,
-        google_email:      result.google_email      || '',
-        google_credential: _googleCredential        || '',
-        token_at:          new Date().toISOString()
+        nome_perfil: result.tecnico.perfil,
+        modulos:     result.tecnico.modulos  || [],
+        is_admin:    result.tecnico.is_admin || false,
+        token_at:    new Date().toISOString()
       };
       salvarSessaoStorage(JSON.stringify(session));
     }
@@ -873,16 +604,9 @@
     // ── SAIR ───────────────────────────────────────────────────────────────
     function sair() {
       limparSessaoStorage();
-      _googleCredential = null;
-      _idTecnico        = null;
-      _nomeTecnico      = null;
-      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-        google.accounts.id.disableAutoSelect();
-      }
       document.getElementById('pin-input').value = '';
       document.getElementById('pin-error').textContent = '';
-      document.getElementById('lista-usuarios').innerHTML = '';
-      mostrarTela('google');
+      mostrarTela('login');
     }
 
     // ── INICIALIZAÇÃO ──────────────────────────────────────────────────────
@@ -891,27 +615,20 @@
       if (raw) {
         try {
           const session = JSON.parse(raw);
-          if (session.google_credential && credentialValido(session.google_credential)) {
-            _googleCredential = session.google_credential;
-            const tokenAt = new Date(session.token_at).getTime();
-            if (Date.now() - tokenAt < 8 * 60 * 60 * 1000) {
-              renderMenu(session);
-              mostrarTela('menu');
-              return;
-            }
+          const tokenAt = new Date(session.token_at).getTime();
+          if (session.token_at && Date.now() - tokenAt < 8 * 60 * 60 * 1000) {
+            renderMenu(session);
+            mostrarTela('menu');
+            return;
           }
         } catch(e) {}
         limparSessaoStorage();
-        _googleCredential = null;
       }
       if (!GAS_URL) {
         document.getElementById('gas-aviso').style.display = 'block';
         document.getElementById('btn-entrar').disabled = true;
       }
-      _idTecnico   = null;
-      _nomeTecnico = null;
-      mostrarTela('google');
-      inicializarGIS();
+      mostrarTela('login');
     })();
 
     function abrirFormsAvulso() {
