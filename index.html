@@ -1,3 +1,15 @@
+<!--
+ProperHub_index_v13.html
+v13 — init() restaurava sessão via localStorage sem re-gravar em
+       sessionStorage. Qualquer tela que dependa de sessionStorage (ex:
+       checkHubSession do PCM) ficava sem sessão numa aba nova/recarregada
+       mesmo com o usuário "logado" na tela (que lê localStorage). Ver
+       PCM_v54.html para o sintoma completo (bounce ao abrir Administração).
+  - init(): ao restaurar sessão válida, chama salvarSessaoStorage(raw) de
+    novo, re-hidratando sessionStorage a partir do localStorage. Nenhuma
+    mudança de comportamento visível — só garante que as duas storages
+    ficam sincronizadas sempre que o Hub carrega.
+-->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -617,6 +629,10 @@
           const session = JSON.parse(raw);
           const tokenAt = new Date(session.token_at).getTime();
           if (session.token_at && Date.now() - tokenAt < 8 * 60 * 60 * 1000) {
+            // v13: re-hidrata sessionStorage a partir do que foi lido
+            // (pode ter vindo só do localStorage) — evita que telas que
+            // só leem sessionStorage (ex: PCM) fiquem sem sessão nesta aba.
+            salvarSessaoStorage(raw);
             renderMenu(session);
             mostrarTela('menu');
             return;
