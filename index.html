@@ -1,3 +1,4 @@
+<!-- v14 : OFF-1 PWA. Adiciona manifest, apple-touch-icon e registro do service worker no head. Aditivo, sem mudanca de logica/IDs. -->
 <!--
 ProperHub_index_v13.html
 v13 — init() restaurava sessão via localStorage sem re-gravar em
@@ -18,6 +19,10 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
   <meta name="theme-color" content="#111827">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="ProperHub">
+  <script src="proper-pwa.js" defer></script>
   <title>ProperHub</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
