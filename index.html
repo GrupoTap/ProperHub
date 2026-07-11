@@ -1,4 +1,13 @@
-<!-- v14 : OFF-1 PWA. Adiciona manifest, apple-touch-icon e registro do service worker no head. Aditivo, sem mudanca de logica/IDs. -->
+<!--
+ProperHub_index_v15.html
+v15 — 11/07/2026 — Sprint F: rename form08→form02 (par GAS_properCare_v68.js/
+       PCF v57/PCM v78). href e label do card avulso "Form 08" trocados para
+       form02.html/"Form 02 – Diagnóstico"; chave form08 do MODULOS renomeada
+       para form02 (url form02.html, label "Diagnóstico (Form 02)"); módulos
+       legados de sessões antigas (session.modulos com 'form08') normalizados
+       para 'form02' antes de montar o Set de acesso. form09/form10 não
+       tocados. Nenhum id/data-key/função renomeado.
+-->
 <!--
 ProperHub_index_v13.html
 v13 — init() restaurava sessão via localStorage sem re-gravar em
@@ -19,10 +28,6 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
   <meta name="theme-color" content="#111827">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <meta name="apple-mobile-web-app-title" content="ProperHub">
-  <script src="proper-pwa.js" defer></script>
   <title>ProperHub</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -339,11 +344,11 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
         Use estes formulários apenas quando não houver uma OS associada. Para serviços em andamento, acesse pelo Pipeline da OS.
       </p>
       <div style="display:flex; flex-direction:column; gap:12px;">
-        <a href="../ProperForms/form08.html"
+        <a href="../ProperForms/form02.html"
           style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-primary,#F9FAFB); border:1px solid rgba(255,255,255,0.06);">
           <span style="font-size:22px;">📋</span>
           <div>
-            <div style="font-weight:600; font-size:15px;">Form 08 – Diagnóstico</div>
+            <div style="font-weight:600; font-size:15px;">Form 02 – Diagnóstico</div>
             <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Diagnóstico sem desmontagem</div>
           </div>
           <span style="margin-left:auto; color:var(--text-secondary,#9CA3AF);">›</span>
@@ -420,7 +425,7 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
       pcf_inspecao:   { label: 'Campo – Inspeção',        url: '../ProperTech/index.html',              icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
       pcf_preventiva: { label: 'Campo – Preventiva',      url: '../ProperTech/index.html?modo=preventiva', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
       pcf_pipeline:   { label: 'Minhas OS (Pipeline)',    url: '../ProperTech/index.html?modo=pipeline',  icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h3m-3 4h6' },
-      form08:         { label: 'Diagnóstico (Form 08)',    url: '../ProperForms/form08.html',         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+      form02:         { label: 'Diagnóstico (Form 02)',    url: '../ProperForms/form02.html',         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
       form09:         { label: 'Peritagem Mecânica',      url: '../ProperForms/form09.html',              icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
       form10:         { label: 'Peritagem Elétrica',      url: '../ProperForms/form10.html',              icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
       rotores:        { label: 'Ficha de Rotores',        url: '../ProperRotores/index.html',             icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
@@ -555,7 +560,7 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
       const grid = document.getElementById('modulos-grid');
       grid.innerHTML = '';
 
-      const modulos = session.modulos || [];
+      const modulos = (session.modulos || []).map(m => m === 'form08' ? 'form02' : m);
       // Normaliza: pcm_leitura e pcm_completo → representados por 'pcm_completo'
       const temAdmin = modulos.includes('pcm_completo') || modulos.includes('pcm_leitura') || session.is_admin;
       const setAcesso = new Set(modulos);
