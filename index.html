@@ -1,4 +1,21 @@
 <!--
+ProperHub_index_v16.html
+v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (decisão do Fernando,
+       diagnóstico offline 19/07). Antes: init() descartava sessão com
+       token_at > 8h e caía na tela de PIN — e loginTecnico exige GAS. Técnico
+       em área sem sinal com sessão de ontem ficava trancado fora do Hub E do
+       PCF (checkHubSession do PCF redireciona pra cá sem proper_session).
+       Agora: sessão expirada só é descartada quando o GAS está ALCANÇÁVEL
+       (há rede para relogar). Sem rede, entra em modo offline com banner
+       "📴 sessão expirada — renove quando houver sinal"; quando a rede volta,
+       o banner vira botão de renovação (não expulsa no meio do trabalho).
+       Novas funções: pingGasHub, entrarComGraceOffline, mostrarBannerOfflineHub,
+       esconderBannerOfflineHub. init() ganha 1 desvio novo; comportamento COM
+       rede é idêntico ao v15 (expirou + GAS alcançável = tela de PIN).
+       100% aditivo; nenhum id/data-key/função renomeado. Par: sw.js bump
+       properhub-v14 → properhub-v16.
+-->
+<!--
 ProperHub_index_v15.html
 v15 — 11/07/2026 — Sprint F: rename form08→form02 (par GAS_properCare_v68.js/
        PCF v57/PCM v78). href e label do card avulso "Form 08" trocados para
@@ -635,6 +652,67 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
       mostrarTela('login');
     }
 
+    // ── v16: TOLERÂNCIA OFFLINE DA SESSÃO ─────────────────────────────────
+    // Sessão expirada (>8h) só é descartada quando o GAS está alcançável —
+    // ou seja, quando existe rede para o técnico relogar. Sem rede, o campo
+    // não fica trancado: entra em modo offline com banner e renova depois.
+    // pingGasHub: qualquer RESPOSTA do GAS (mesmo erro de negócio) prova que
+    // há rede; só falha de rede/timeout conta como offline.
+    function pingGasHub(timeoutMs) {
+      if (!GAS_URL) return Promise.resolve(false);
+      var opts = { method: 'GET' };
+      try { opts.signal = AbortSignal.timeout(timeoutMs || 4000); } catch(e) {}
+      return fetch(GAS_URL + '?action=ping', opts)
+        .then(function(){ return true; })
+        .catch(function(){ return false; });
+    }
+
+    function mostrarBannerOfflineHub(msg, clicavel) {
+      var el = document.getElementById('hubOfflineBanner');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'hubOfflineBanner';
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;' +
+          'background:#92400e;color:#fef3c7;font:600 13px/1.4 Inter,system-ui,sans-serif;' +
+          'padding:10px 14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.4)';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      el.style.cursor = clicavel ? 'pointer' : 'default';
+      el.onclick = clicavel ? function(){ esconderBannerOfflineHub(); sair(); } : null;
+      el.style.display = 'block';
+    }
+    function esconderBannerOfflineHub() {
+      var el = document.getElementById('hubOfflineBanner');
+      if (el) el.style.display = 'none';
+    }
+
+    function entrarComGraceOffline(raw, session) {
+      // Entra no menu imediatamente (não deixa o técnico esperando timeout
+      // na tela de PIN) e, em paralelo, testa o GAS: alcançável => política
+      // padrão (sessão expirada exige novo PIN, igual ao v15).
+      salvarSessaoStorage(raw); // re-hidrata sessionStorage p/ PCF/PCM (v13)
+      renderMenu(session);
+      mostrarTela('menu');
+      mostrarBannerOfflineHub('⏳ Sessão expirada — verificando conexão…');
+      pingGasHub(4000).then(function(ok) {
+        if (ok) {
+          limparSessaoStorage();
+          esconderBannerOfflineHub();
+          document.getElementById('pin-input').value = '';
+          document.getElementById('pin-error').textContent = 'Sessão expirada — faça login novamente.';
+          mostrarTela('login');
+          return;
+        }
+        mostrarBannerOfflineHub('📴 Modo offline — sessão expirada. Renove o login quando houver sinal.');
+        window.addEventListener('online', function() {
+          pingGasHub(4000).then(function(ok2) {
+            if (ok2) mostrarBannerOfflineHub('🔄 Rede disponível — toque aqui para renovar o login.', true);
+          });
+        });
+      });
+    }
+
     // ── INICIALIZAÇÃO ──────────────────────────────────────────────────────
     (function init() {
       const raw = lerSessaoStorage();
@@ -649,6 +727,12 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
             salvarSessaoStorage(raw);
             renderMenu(session);
             mostrarTela('menu');
+            return;
+          }
+          // v16 — sessão expirada mas íntegra: tolerância offline decide
+          // (com rede => tela de PIN, igual antes; sem rede => modo offline).
+          if (session.token_at && session.tecnico) {
+            entrarComGraceOffline(raw, session);
             return;
           }
         } catch(e) {}
