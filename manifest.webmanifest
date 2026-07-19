@@ -1,7 +1,7 @@
 {
   "id": "/ProperHub/",
   "start_url": "/ProperHub/?source=pwa",
-  "scope": "/ProperHub/",
+  "scope": "/",
   "name": "ProperHub",
   "short_name": "ProperHub",
   "description": "Portal ProperCare — acesso unificado aos módulos de campo e administração.",
