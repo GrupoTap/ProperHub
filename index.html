@@ -49,7 +49,35 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub</title>
+  <title>ProperHub · v17</title>
+  <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
+  <script>
+  (function(){
+    var _ult = 0;
+    function _mostrar(msg){
+      try {
+        console.error('[Hub v17]', msg);
+        if (Date.now() - _ult < 5000) return; _ult = Date.now();
+        var d = document.getElementById('hubErroGlobal');
+        if (!d) {
+          d = document.createElement('div'); d.id = 'hubErroGlobal';
+          d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;padding:10px 14px;' +
+            'background:#7f1d1d;color:#fee2e2;font:13px/1.4 system-ui,sans-serif;text-align:center';
+          d.onclick = function(){ d.remove(); };
+          (document.body || document.documentElement).appendChild(d);
+        }
+        d.textContent = '⚠ ' + String(msg) + '  (toque para fechar)';
+      } catch(e) {}
+    }
+    window.addEventListener('error', function(ev){
+      if (ev && ev.target && ev.target !== window && ev.target.tagName) return;
+      _mostrar((ev && ev.message) || 'falha no script');
+    });
+    window.addEventListener('unhandledrejection', function(ev){
+      var r = ev && ev.reason; _mostrar((r && r.message) || String(r || 'promessa rejeitada'));
+    });
+  })();
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -354,7 +382,7 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
   </div>
 
   <!-- Overlay: Formulários Avulsos -->
-  <div id="overlay-forms-avulso" style="display:none; position:fixed; inset:0; background:var(--bg-primary,#111827); z-index:200; overflow-y:auto; padding:24px 16px;">
+  <div id="overlay-forms-avulso" style="display:none; position:fixed; inset:0; background:var(--bg-app,#111827); z-index:200; overflow-y:auto; padding:24px 16px;">
     <div style="max-width:480px; margin:0 auto;">
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:28px;">
         <button onclick="fecharFormsAvulso()"
@@ -374,21 +402,25 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
           </div>
           <span style="margin-left:auto; color:var(--text-secondary,#9CA3AF);">›</span>
         </a>
-        <a href="../ProperForms/form09.html" id="link-form09"
-          style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-secondary,#9CA3AF); border:1px solid rgba(255,255,255,0.06); opacity:0.5; pointer-events:none;">
+        <!-- v17 (item 41) — apontava para ../ProperForms/form09.html, que NUNCA
+             existiu. O doc antigo mandava corrigir para peritagem.html?tipo=09,
+             mas a peritagem foi separada em 29/07: os arquivos reais são
+             form03.html (mecânica) e form04.html (elétrica). Destravado. -->
+        <a href="../ProperForms/form03.html" id="link-form09"
+          style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-secondary,#9CA3AF); border:1px solid rgba(255,255,255,0.06);">
           <span style="font-size:22px;">⚙️</span>
           <div>
-            <div style="font-weight:600; font-size:15px;">Form 09 – Peritagem Mecânica</div>
-            <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Em breve</div>
+            <div style="font-weight:600; font-size:15px;">Form 03 – Peritagem Mecânica</div>
+            <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Diagnóstico mecânico</div>
           </div>
           <span style="margin-left:auto;">🔒</span>
         </a>
-        <a href="../ProperForms/form10.html" id="link-form10"
-          style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-secondary,#9CA3AF); border:1px solid rgba(255,255,255,0.06); opacity:0.5; pointer-events:none;">
+        <a href="../ProperForms/form04.html" id="link-form10"
+          style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-secondary,#9CA3AF); border:1px solid rgba(255,255,255,0.06);">
           <span style="font-size:22px;">⚡</span>
           <div>
-            <div style="font-weight:600; font-size:15px;">Form 10 – Peritagem Elétrica</div>
-            <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Em breve</div>
+            <div style="font-weight:600; font-size:15px;">Form 04 – Peritagem Elétrica</div>
+            <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Diagnóstico elétrico</div>
           </div>
           <span style="margin-left:auto;">🔒</span>
         </a>
@@ -447,8 +479,8 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
       pcf_preventiva: { label: 'Campo – Preventiva',      url: '../ProperTech/index.html?modo=preventiva', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
       pcf_pipeline:   { label: 'Minhas OS (Pipeline)',    url: '../ProperTech/index.html?modo=pipeline',  icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h3m-3 4h6' },
       form02:         { label: 'Diagnóstico (Form 02)',    url: '../ProperForms/form02.html',         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      form09:         { label: 'Peritagem Mecânica',      url: '../ProperForms/form09.html',              icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
-      form10:         { label: 'Peritagem Elétrica',      url: '../ProperForms/form10.html',              icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+      form09:         { label: 'Peritagem Mecânica',      url: '../ProperForms/form03.html',              icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+      form10:         { label: 'Peritagem Elétrica',      url: '../ProperForms/form04.html',              icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
       rotores:        { label: 'Ficha de Rotores',        url: '../ProperRotores/index.html',             icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
       forms_avulso:   {
         label: 'Formulários Avulsos',
@@ -521,7 +553,6 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
         const resp = await fetch(GAS_URL, {
           method: 'POST',
           body: JSON.stringify({
-            acao:      'loginTecnico',
             action:    'loginTecnico',
             pin_hash:  hash,
             key:       API_KEY
