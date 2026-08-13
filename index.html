@@ -37,6 +37,34 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
     mudança de comportamento visível — só garante que as duas storages
     ficam sincronizadas sempre que o Hub carrega.
 -->
+<!--
+ProperHub_index_v18.html
+v18 — 13/08/2026 — Rodada de PERFORMANCE / FEEDBACK DE ESPERA. 100% aditiva:
+       nenhuma função, id, chave de MODULOS/ORDEM_MODULOS ou chave de storage
+       foi renomeada ou removida.
+  - Google Fonts deixou de ser recurso BLOQUEANTE de render (era o único do
+    Hub, e o Hub é a primeira tela de todo mundo): preconnect + carga assíncrona
+    via media="print" onload="this.media='all'" + <noscript> de fallback. O
+    body já declarava 'Inter', system-ui, sans-serif, então o risco visual é
+    nulo — só deixa de esperar o RTT de fonts.googleapis.com para pintar.
+  - fazerLogin(): fetch ganhou AbortSignal.timeout(15000) e mensagem própria
+    de timeout. NENHUM header novo — o POST ao GAS continua "simple request"
+    (Content-Type ausente de propósito: o Apps Script não responde OPTIONS).
+  - Botão "Entrar" subiu ao padrão da casa: classe .is-busy com ::after
+    girando (CSS portado do PCF v55 ~L2031) somada ao disabled/"Verificando..."
+    que já existia. Novo helper _comLoadingBtn_ (par idêntico ao do PCF/PCM).
+  - #pin-input ganhou autofocus — economiza um toque em todo login do sistema.
+  - Cards de módulo e links do overlay avulso agora dão feedback ao toque
+    (classe .navegando + trava contra duplo-toque): em 3G o usuário não tinha
+    nenhum sinal de que a navegação começou.
+  - Listener 'online' de entrarComGraceOffline passou a {once:true}.
+  - Par: sw.js bump properhub-v17 → properhub-v18 (corrida de 2500ms na
+    navegação network-first + APP_SHELL com proper-pwa.js e sw.js).
+-->
+<!--
+ProperHub_index_v16.html
+v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original abaixo).
+-->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -49,7 +77,7 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub · v17</title>
+  <title>ProperHub · v18</title>
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -78,7 +106,22 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
     });
   })();
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- v18 — Google Fonts era o ÚNICO recurso bloqueante de render do Hub, e o
+       Hub é a primeira tela de todo uso do sistema: o primeiro paint esperava
+       DNS+TLS+RTT de fonts.googleapis.com (que o sw.js, corretamente, nunca
+       intercepta por ser cross-origin). Agora: preconnect abre a conexão cedo e
+       o stylesheet entra como media="print" (não bloqueia render) virando
+       media="all" no onload. O html/body abaixo já declara o fallback
+       'Inter', system-ui, sans-serif — o texto pinta imediatamente na fonte do
+       sistema e troca para Inter quando ela chega. URL, family e pesos
+       inalterados. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"
+        media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </noscript>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -212,6 +255,20 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary:not(:disabled):hover { background: var(--accent-hover); }
 
+    /* v18 — padrão da casa: .is-busy + ::after girando (portado do PCF v55
+       ~L2031, par idêntico). O texto do botão fica transparente e o spinner
+       ocupa o centro; usado por _comLoadingBtn_. */
+    .btn-primary.is-busy, .btn-sair.is-busy {
+      position: relative; color: transparent !important; pointer-events: none;
+    }
+    .btn-primary.is-busy::after, .btn-sair.is-busy::after {
+      content: ''; position: absolute; width: 16px; height: 16px;
+      top: calc(50% - 8px); left: calc(50% - 8px);
+      border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+      border-radius: 50%; animation: properSpin .6s linear infinite;
+    }
+    @keyframes properSpin { to { transform: rotate(360deg); } }
+
     .gas-aviso {
       margin-top: 16px;
       padding: 12px 16px;
@@ -337,6 +394,27 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
       font-size: 18px;
     }
 
+    /* v18 — feedback de toque nos cards e nos links do overlay avulso.
+       Antes, tocar num card em 3G não dava NENHUM sinal de que a navegação
+       tinha começado: o usuário tocava de novo. .navegando trava novos toques
+       e troca a seta '›' por um spinner. */
+    .modulo-card.navegando, .avulso-link.navegando {
+      pointer-events: none;
+      opacity: .6;
+      border-color: var(--accent);
+    }
+    .modulo-card.navegando .card-arrow, .avulso-link.navegando .card-arrow-avulso {
+      color: transparent !important;
+      position: relative;
+    }
+    .modulo-card.navegando .card-arrow::after,
+    .avulso-link.navegando .card-arrow-avulso::after {
+      content: ''; position: absolute; width: 14px; height: 14px;
+      top: calc(50% - 7px); left: calc(50% - 7px);
+      border: 2px solid rgba(255,255,255,.25); border-top-color: var(--accent);
+      border-radius: 50%; animation: properSpin .6s linear infinite;
+    }
+
   </style>
 </head>
 <body>
@@ -351,9 +429,12 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
+      <!-- v18 — autofocus: o campo de PIN é a primeira interação de TODO
+           usuário do sistema; sem ele todo mundo paga um toque extra antes de
+           o teclado abrir. -->
       <input id="pin-input" type="password" inputmode="numeric"
              maxlength="6" placeholder="Digite seu PIN"
-             autocomplete="off"
+             autocomplete="off" autofocus
              onkeydown="if(event.key==='Enter') fazerLogin()">
       <div id="pin-error" class="pin-error"></div>
     </div>
@@ -393,45 +474,45 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
         Use estes formulários apenas quando não houver uma OS associada. Para serviços em andamento, acesse pelo Pipeline da OS.
       </p>
       <div style="display:flex; flex-direction:column; gap:12px;">
-        <a href="../ProperForms/form02.html"
+        <a href="../ProperForms/form02.html" class="avulso-link" onclick="marcarNavegando(this)"
           style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-primary,#F9FAFB); border:1px solid rgba(255,255,255,0.06);">
           <span style="font-size:22px;">📋</span>
           <div>
             <div style="font-weight:600; font-size:15px;">Form 02 – Diagnóstico</div>
             <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Diagnóstico sem desmontagem</div>
           </div>
-          <span style="margin-left:auto; color:var(--text-secondary,#9CA3AF);">›</span>
+          <span class="card-arrow-avulso" style="margin-left:auto; color:var(--text-secondary,#9CA3AF);">›</span>
         </a>
         <!-- v17 (item 41) — apontava para ../ProperForms/form09.html, que NUNCA
              existiu. O doc antigo mandava corrigir para peritagem.html?tipo=09,
              mas a peritagem foi separada em 29/07: os arquivos reais são
              form03.html (mecânica) e form04.html (elétrica). Destravado. -->
-        <a href="../ProperForms/form03.html" id="link-form09"
+        <a href="../ProperForms/form03.html" id="link-form09" class="avulso-link" onclick="marcarNavegando(this)"
           style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-secondary,#9CA3AF); border:1px solid rgba(255,255,255,0.06);">
           <span style="font-size:22px;">⚙️</span>
           <div>
             <div style="font-weight:600; font-size:15px;">Form 03 – Peritagem Mecânica</div>
             <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Diagnóstico mecânico</div>
           </div>
-          <span style="margin-left:auto;">🔒</span>
+          <span class="card-arrow-avulso" style="margin-left:auto;">🔒</span>
         </a>
-        <a href="../ProperForms/form04.html" id="link-form10"
+        <a href="../ProperForms/form04.html" id="link-form10" class="avulso-link" onclick="marcarNavegando(this)"
           style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-secondary,#9CA3AF); border:1px solid rgba(255,255,255,0.06);">
           <span style="font-size:22px;">⚡</span>
           <div>
             <div style="font-weight:600; font-size:15px;">Form 04 – Peritagem Elétrica</div>
             <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Diagnóstico elétrico</div>
           </div>
-          <span style="margin-left:auto;">🔒</span>
+          <span class="card-arrow-avulso" style="margin-left:auto;">🔒</span>
         </a>
-        <a href="../ProperRotores/index.html"
+        <a href="../ProperRotores/index.html" class="avulso-link" onclick="marcarNavegando(this)"
           style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--bg-card,#1F2937); border-radius:10px; text-decoration:none; color:var(--text-primary,#F9FAFB); border:1px solid rgba(255,255,255,0.06);">
           <span style="font-size:22px;">🩺</span>
           <div>
             <div style="font-weight:600; font-size:15px;">Ficha de Rotores</div>
             <div style="font-size:12px; color:var(--text-secondary,#9CA3AF); margin-top:2px;">Medição de folgas e tolerâncias</div>
           </div>
-          <span style="margin-left:auto; color:var(--text-secondary,#9CA3AF);">›</span>
+          <span class="card-arrow-avulso" style="margin-left:auto; color:var(--text-secondary,#9CA3AF);">›</span>
         </a>
       </div>
     </div>
@@ -514,6 +595,46 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
       try { sessionStorage.removeItem('proper_session'); } catch(e) {}
     }
 
+    // ── v18: FEEDBACK DE ESPERA (padrão da casa) ──────────────────────────
+    // _comLoadingBtn_ é o par idêntico do helper do PCF v55 (~L13052) e do
+    // PCM v77 (~L8547): desabilita, aplica .is-busy (spinner via ::after),
+    // troca o texto e restaura TUDO no finally — inclusive quando dá erro.
+    // Uso: await _comLoadingBtn_(btnClicado, async () => { ... }).
+    async function _comLoadingBtn_(btnEl, asyncFn) {
+      if (!btnEl) return asyncFn();
+      const textoOriginal = btnEl.textContent;
+      const disabledOriginal = btnEl.disabled;
+      btnEl.disabled = true;
+      btnEl.classList.add('is-busy');
+      btnEl.dataset.loadingOriginalText = textoOriginal;
+      btnEl.textContent = '⏳ Processando…';
+      try {
+        return await asyncFn();
+      } finally {
+        btnEl.disabled = disabledOriginal;
+        btnEl.classList.remove('is-busy');
+        btnEl.textContent = btnEl.dataset.loadingOriginalText;
+        delete btnEl.dataset.loadingOriginalText;
+      }
+    }
+
+    // marcarNavegando: o clique num card/link só troca de página depois que o
+    // navegador busca o próximo HTML — em 3G isso demora e o usuário não tinha
+    // NENHUM sinal, então tocava de novo. Trava o elemento e mostra spinner.
+    // Se a navegação falhar/for cancelada (ou o usuário voltar via bfcache),
+    // o estado é limpo no pageshow abaixo.
+    function marcarNavegando(el) {
+      if (!el) return;
+      if (el.classList.contains('navegando')) return false;
+      el.classList.add('navegando');
+      return true;
+    }
+    function limparNavegando() {
+      var els = document.querySelectorAll('.navegando');
+      for (var i = 0; i < els.length; i++) els[i].classList.remove('navegando');
+    }
+    window.addEventListener('pageshow', limparNavegando);
+
     // ── NAVEGAÇÃO ENTRE TELAS ──────────────────────────────────────────────
     function mostrarTela(nome) {
       document.getElementById('tela-login').style.display = nome === 'login' ? '' : 'none';
@@ -545,38 +666,48 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
       }
 
       const btn = document.getElementById('btn-entrar');
-      btn.disabled = true;
-      btn.textContent = 'Verificando...';
 
-      try {
-        const hash = await hashPin(pin);
-        const resp = await fetch(GAS_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            action:    'loginTecnico',
-            pin_hash:  hash,
-            key:       API_KEY
-          })
-        });
-        const result = await resp.json();
+      // v18 — o disabled + "Verificando..." já existiam; o que entra agora é o
+      // .is-busy (spinner) via _comLoadingBtn_ e o TIMEOUT. Sem timeout, uma
+      // rede pendurada (o caso clássico do campo) deixava o botão preso em
+      // "Verificando..." para sempre, sem erro e sem saída.
+      await _comLoadingBtn_(btn, async () => {
+        btn.textContent = 'Verificando...';
+        try {
+          const hash = await hashPin(pin);
+          // ATENÇÃO: nenhum header aqui, de propósito. Sem Content-Type o POST
+          // continua sendo "simple request" e não dispara preflight OPTIONS —
+          // que o Apps Script não responde. Só o signal foi acrescentado.
+          const opcoes = {
+            method: 'POST',
+            body: JSON.stringify({
+              action:    'loginTecnico',
+              pin_hash:  hash,
+              key:       API_KEY
+            })
+          };
+          try { opcoes.signal = AbortSignal.timeout(15000); } catch(e) {}
+          const resp = await fetch(GAS_URL, opcoes);
+          const result = await resp.json();
 
-        if (result.status === 'ok' && result.valido) {
-          salvarSessao(result);
-          renderMenu(JSON.parse(lerSessaoStorage()));
-          mostrarTela('menu');
-        } else {
-          errorEl.textContent = result.error || 'PIN inválido ou técnico inativo.';
+          if (result.status === 'ok' && result.valido) {
+            salvarSessao(result);
+            renderMenu(JSON.parse(lerSessaoStorage()));
+            mostrarTela('menu');
+          } else {
+            errorEl.textContent = result.error || 'PIN inválido ou técnico inativo.';
+            pinInput.value = '';
+            pinInput.focus();
+          }
+        } catch (err) {
+          var ehTimeout = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
+          errorEl.textContent = ehTimeout
+            ? 'A conexão demorou demais. Tente de novo.'
+            : 'Erro de conexão. Tente novamente.';
           pinInput.value = '';
           pinInput.focus();
         }
-      } catch (err) {
-        errorEl.textContent = 'Erro de conexão. Tente novamente.';
-        pinInput.value = '';
-        pinInput.focus();
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Entrar';
-      }
+      });
     }
 
     // ── SALVAR SESSÃO ──────────────────────────────────────────────────────
@@ -639,6 +770,10 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
           // Card link externo
           card = document.createElement('a');
           card.href = mod.url;
+          // v18 — feedback de toque: em 3G a navegação demora e o card não
+          // dava nenhum sinal, então o usuário tocava de novo. Não usa
+          // preventDefault: a navegação nativa do <a> segue normalmente.
+          card.addEventListener('click', function() { marcarNavegando(card); });
         } else {
           // Card com ação interna (url: null)
           card = document.createElement('div');
@@ -736,11 +871,13 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
           return;
         }
         mostrarBannerOfflineHub('📴 Modo offline — sessão expirada. Renove o login quando houver sinal.');
+        // v18 — {once:true}: antes, cada oscilação de rede numa sessão longa
+        // acumulava listener e re-disparava pingGasHub.
         window.addEventListener('online', function() {
           pingGasHub(4000).then(function(ok2) {
             if (ok2) mostrarBannerOfflineHub('🔄 Rede disponível — toque aqui para renovar o login.', true);
           });
-        });
+        }, { once: true });
       });
     }
 
