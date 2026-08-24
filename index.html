@@ -38,7 +38,16 @@ v13 — init() restaurava sessão via localStorage sem re-gravar em
     ficam sincronizadas sempre que o Hub carrega.
 -->
 <!--
-ProperHub_index_v18.html
+ProperHub_index_v19.html
+v19 — 24/08/2026 — CARD "AGENDA DA EQUIPE" (módulo novo pcm_agenda). 100% aditiva
+sobre a v18: um módulo no mapa, um item na ordem, uma linha no temAdmin. Par do
+PCM V136, que aceita o módulo na porta e liga o modo celular enxuto para quem
+só tem ele (o caso do vendedor que agenda demanda em campo — pedido do Fernando,
+24/08). O card aponta para o PCM com ?mobile=1: no celular já seria o modo app;
+no desktop, quem tem SÓ pcm_agenda cai no modo app forçado do V136 de qualquer
+jeito — a URL só torna a intenção explícita. Admin também ganha o card (atalho
+de bolso para a mesma agenda). Par: sw.js properhub-v18 → properhub-v19.
+─────────────────────────────────────────────────────────────────────────────
 v18 — 13/08/2026 — Rodada de PERFORMANCE / FEEDBACK DE ESPERA. 100% aditiva:
        nenhuma função, id, chave de MODULOS/ORDEM_MODULOS ou chave de storage
        foi renomeada ou removida.
@@ -77,7 +86,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub · v18</title>
+  <title>ProperHub · v19</title>
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -569,7 +578,10 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
         icon:  'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
       },
       pcm_leitura:    { label: 'Administração',           url: '../ProperAdmin/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
-      pcm_completo:   { label: 'Administração',           url: '../ProperAdmin/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' }
+      pcm_completo:   { label: 'Administração',           url: '../ProperAdmin/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
+      // v19 — agenda da equipe no celular (modo app do PCM). É o acesso "do
+      // tamanho do vendedor": agenda e demandas, sem o resto da administração.
+      pcm_agenda:     { label: 'Agenda da equipe',        url: '../ProperAdmin/index.html?mobile=1',   icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' }
     };
     // pcm_leitura e pcm_completo apontam para a mesma URL — módulo Administração aparece uma vez só no menu
 
@@ -733,6 +745,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
       'pcf_inspecao',
       'pcf_preventiva',
       'forms_avulso',
+      'pcm_agenda',     // v19 — antes da Administração: é o card de uso diário
       'pcm_completo'
     ];
 
@@ -748,6 +761,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
       const temAdmin = modulos.includes('pcm_completo') || modulos.includes('pcm_leitura') || session.is_admin;
       const setAcesso = new Set(modulos);
       if (temAdmin) setAcesso.add('pcm_completo');
+      if (temAdmin) setAcesso.add('pcm_agenda');   // v19 — admin também vê a agenda de bolso
       // Pipeline visível para qualquer técnico de campo (inspeção ou preventiva)
       if (setAcesso.has('pcf_inspecao') || setAcesso.has('pcf_preventiva')) {
         setAcesso.add('pcf_pipeline');
