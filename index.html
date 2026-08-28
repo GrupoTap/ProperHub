@@ -1,4 +1,18 @@
 <!--
+ProperHub_index_v20.html
+v20 — 28/08/2026 — O CARD DE INSPEÇÃO PASSA A PEDIR O MODO. Uma linha: a URL do
+`pcf_inspecao` ganha `?modo=inspecao`. Par do PCF V100, que fecha as portas por
+onde o atendimento nascia sem OS (chamado de 27/08, Fundição São Cristóvão: o
+mesmo atendimento em três pastas). Até aqui este card mandava a URL NUA, e URL
+nua no PCF significava "tela livre em inspeção" — o mesmo default em que o ícone
+do PWA caía. Com o V100, ausência de modo vira `pipeline`; quem quer a tela
+avulsa diz o nome dela.
+⚠ ORDEM: este arquivo ANTES do PCF V100 (a V99 ignora modo desconhecido, então
+  publicar antes é inofensivo; publicar depois abre uma janela em que o card de
+  inspeção leva ao pipeline).
+Par: sw.js properhub-v19 → properhub-v20.
+-->
+<!--
 ProperHub_index_v16.html
 v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (decisão do Fernando,
        diagnóstico offline 19/07). Antes: init() descartava sessão com
@@ -86,7 +100,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub · v19</title>
+  <title>ProperHub · v20</title>
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -565,7 +579,15 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
     const API_KEY = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 de 123456
 
     const MODULOS = {
-      pcf_inspecao:   { label: 'Campo – Inspeção',        url: '../ProperTech/index.html',              icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
+      // v20 (28/08) — A URL DEIXA DE SER NUA. O PCF V100 passa a tratar
+      // "sem ?modo=" como `pipeline` (a lista de OS), porque era por aí que o
+      // ícone do PWA e todo link antigo entravam sem OS. A inspeção avulsa
+      // continua existindo inteira — mas agora este card PEDE por ela.
+      // ⚠ Publicar ESTE ARQUIVO ANTES do PCF V100: contra a V99 no ar um
+      //   `modo` desconhecido é ignorado e o card se comporta exatamente como
+      //   sempre. A ordem inversa deixaria "Campo – Inspeção" abrindo o
+      //   pipeline pelo tempo que os dois deploys ficassem separados.
+      pcf_inspecao:   { label: 'Campo – Inspeção',        url: '../ProperTech/index.html?modo=inspecao', icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
       pcf_preventiva: { label: 'Campo – Preventiva',      url: '../ProperTech/index.html?modo=preventiva', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
       pcf_pipeline:   { label: 'Minhas OS (Pipeline)',    url: '../ProperTech/index.html?modo=pipeline',  icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h3m-3 4h6' },
       form02:         { label: 'Diagnóstico (Form 02)',    url: '../ProperForms/form02.html',         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },

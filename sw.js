@@ -8,7 +8,7 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app.
  * O activate abaixo apaga qualquer cache antigo com prefixo 'properhub-'.
  */
-const CACHE = 'properhub-v19'; // 24/08/2026: par do index v19 (card Agenda da equipe / pcm_agenda)
+const CACHE = 'properhub-v20'; // 28/08/2026: par do index v20 (card de Inspeção passa a mandar ?modo=inspecao)
 const SCOPE_PREFIX = '/ProperHub/';
 const APP_SHELL = [
   '/ProperHub/',
