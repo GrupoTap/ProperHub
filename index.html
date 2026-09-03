@@ -1,4 +1,45 @@
 <!--
+ProperHub_index_v21.html
+v21 — 03/09/2026 — O LOGIN QUE ESTOURAVA NO CELULAR. Par do GAS v136.
+
+🔴 O CHAMADO (Fernando, 03/09): "o estagiário não entra pelo iPhone" — tela com
+   "A conexão demorou demais. Tente de novo." e a tarja vermelha "Script error.".
+   Não era o iPhone: era o servidor levando mais que os 15 s que este arquivo
+   dava. MEDIDO no ar em 03/09, deste /exec, de um DESKTOP com rede boa:
+       ?action=ping   → 2.445 ms   (só ir e voltar, sem fazer nada)
+       ?action=getOS  → 7.137 ms · 26.432 bytes
+   e o `loginTecnico` do GAS fazia, em fila: ensureOSHeaders_ · lê CAT_USUARIOS ·
+   grava ultimo_login_at · getOS INTEIRO · grava no LOG_OPERACIONAL · lê
+   CAT_USUARIOS de novo + CAT_PERFIS. Passa de 10 s no melhor caso. No 4G de um
+   celular, estoura antes de o servidor terminar — e o Android só não reclamava
+   porque estava do lado bom da mesma linha.
+
+O QUE MUDA (nada é cosmético, e nada troca uma espera por uma mentira de tela):
+ 1. `sem_os: 1` no POST do login. O `os` que vinha na resposta NUNCA foi lido
+    aqui — `salvarSessao` só copia `result.tecnico`. São 7 s e 26 KB a menos por
+    login, e o GAS v136 é quem honra o campo (sem ele publicado, o login segue
+    funcionando exatamente como hoje: o v135 ignora o flag e manda a lista).
+ 2. Timeout 15 s → 45 s, e aos 12 s a tela DIZ que está lento em vez de deixar o
+    dedo no botão. Aumentar o prazo sem avisar seria trocar um erro rápido por um
+    silêncio longo.
+ 3. O PIN NÃO É MAIS APAGADO quando a falha é de REDE. Só PIN errado limpa o
+    campo. Digitar de novo por causa de sinal ruim é punir quem acertou.
+ 4. Ping de PRÉ-AQUECIMENTO ao abrir na tela de PIN: acorda a instância do Apps
+    Script enquanto a pessoa digita, para o login não pagar o boot também.
+    Fire-and-forget — falhar aqui não afeta nada.
+ 5. 🩺 "Testar conexão" aparece depois de uma falha de rede e responde com
+    NÚMERO ("servidor respondeu em 3,4 s"). Um chamado futuro chega medido.
+ 6. O tratador global de erro para de pintar a tarja com "Script error." pelado.
+    Erro de script CROSS-ORIGIN chega sem mensagem, sem arquivo e sem linha (é o
+    modelo de segurança do navegador) — a tarja não dizia nada a ninguém e
+    assustava quem estava só tentando entrar. Continua no console, e todo erro
+    COM origem conhecida continua na tarja, agora com arquivo:linha.
+
+⚠ Este arquivo funciona com o GAS v135 ou v136 (o flag é ignorado pelo antigo).
+  Mas o ganho dos 7 s só existe com o v136 publicado.
+Par: sw.js properhub-v20 → properhub-v21.
+-->
+<!--
 ProperHub_index_v20.html
 v20 — 28/08/2026 — O CARD DE INSPEÇÃO PASSA A PEDIR O MODO. Uma linha: a URL do
 `pcf_inspecao` ganha `?modo=inspecao`. Par do PCF V100, que fecha as portas por
@@ -100,7 +141,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub · v20</title>
+  <title>ProperHub · v21</title>
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -122,7 +163,24 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
     }
     window.addEventListener('error', function(ev){
       if (ev && ev.target && ev.target !== window && ev.target.tagName) return;
-      _mostrar((ev && ev.message) || 'falha no script');
+      var msg = (ev && ev.message) || 'falha no script';
+      // ── v21 · A TARJA QUE NÃO DIZIA NADA ──────────────────────────────
+      // Erro em script de OUTRA ORIGEM chega ao onerror sem mensagem, sem
+      // arquivo e sem linha: o navegador entrega a string fixa "Script
+      // error." de propósito (é o modelo de segurança, não um bug). A tarja
+      // resultante não ajudava ninguém a consertar nada e apareceu, em
+      // 03/09, na frente de quem só estava tentando digitar o PIN.
+      // 🔑 Some da TELA, não do CONSOLE: quem for depurar continua vendo.
+      // ⚠ A condição exige `!ev.filename`: um "Script error." vindo de um
+      //   arquivo NOSSO (se existir) continua merecendo tarja.
+      if (/^Script error\.?$/i.test(String(msg).trim()) && !(ev && ev.filename)) {
+        try { console.warn('[Hub v21] erro cross-origin sem detalhe (tarja omitida)'); } catch(e) {}
+        return;
+      }
+      var onde = (ev && ev.filename)
+        ? ' (' + String(ev.filename).split('/').pop() + ':' + (ev.lineno || '?') + ')'
+        : '';
+      _mostrar(msg + onde);
     });
     window.addEventListener('unhandledrejection', function(ev){
       var r = ev && ev.reason; _mostrar((r && r.message) || String(r || 'promessa rejeitada'));
@@ -705,8 +763,24 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
       // .is-busy (spinner) via _comLoadingBtn_ e o TIMEOUT. Sem timeout, uma
       // rede pendurada (o caso clássico do campo) deixava o botão preso em
       // "Verificando..." para sempre, sem erro e sem saída.
+      // ═══ v21 · O PRAZO, O AVISO E O PIN QUE FICA ═════════════════════════
+      // 🔑 45 s não é "mais tolerância" solta: é o prazo medido. O login do
+      //    GAS passa de 10 s com rede boa (ping 2,4 s + getOS 7,1 s + o resto);
+      //    15 s era menos que o serviço custa, e quem perdia era sempre o
+      //    aparelho de rede pior — no caso de 03/09, o iPhone do estagiário.
+      // ⚠ Prazo maior SEM aviso seria trocar um erro rápido por um silêncio
+      //   longo: aos 12 s a tela passa a dizer que o servidor está lento, para
+      //   ninguém achar que o toque não pegou e sair batendo no botão.
+      // ⚠ E o PIN só é apagado quando ele está ERRADO. Falha de rede não é
+      //   erro de quem digitou; apagar obrigava a redigitar seis dígitos por
+      //   causa de sinal ruim.
+      // ═════════════════════════════════════════════════════════════════════
       await _comLoadingBtn_(btn, async () => {
         btn.textContent = 'Verificando...';
+        var avisoLento = setTimeout(function () {
+          errorEl.style.color = '#FBBF24';
+          errorEl.textContent = '⏳ O servidor está lento — aguarde, não toque de novo.';
+        }, 12000);
         try {
           const hash = await hashPin(pin);
           // ATENÇÃO: nenhum header aqui, de propósito. Sem Content-Type o POST
@@ -717,10 +791,18 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
             body: JSON.stringify({
               action:    'loginTecnico',
               pin_hash:  hash,
-              key:       API_KEY
+              key:       API_KEY,
+              // v21 — "não me mande a lista de OS": este arquivo nunca leu o
+              // campo `os` da resposta (ver salvarSessao logo abaixo — ele só
+              // copia `result.tecnico`) e ela custava 7,1 s / 26 KB medidos.
+              // ⚠ Quem honra o flag é o GAS v136. Com o v135 no ar o campo é
+              //   ignorado e o login continua funcionando como sempre — só
+              //   sem o ganho. É por isso que dá para publicar os dois na
+              //   ordem que for.
+              sem_os:    1
             })
           };
-          try { opcoes.signal = AbortSignal.timeout(15000); } catch(e) {}
+          try { opcoes.signal = AbortSignal.timeout(45000); } catch(e) {}
           const resp = await fetch(GAS_URL, opcoes);
           const result = await resp.json();
 
@@ -729,19 +811,76 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
             renderMenu(JSON.parse(lerSessaoStorage()));
             mostrarTela('menu');
           } else {
+            // PIN errado: aí sim limpa o campo (é o que se quer redigitar).
+            errorEl.style.color = '';
             errorEl.textContent = result.error || 'PIN inválido ou técnico inativo.';
+            esconderTesteConexao();
             pinInput.value = '';
             pinInput.focus();
           }
         } catch (err) {
           var ehTimeout = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
+          errorEl.style.color = '';
           errorEl.textContent = ehTimeout
-            ? 'A conexão demorou demais. Tente de novo.'
-            : 'Erro de conexão. Tente novamente.';
-          pinInput.value = '';
-          pinInput.focus();
+            ? 'O servidor não respondeu em 45 s. O PIN continua digitado — toque em Entrar de novo.'
+            : 'Erro de conexão (' + ((err && err.message) || 'sem detalhe') + '). O PIN continua digitado.';
+          mostrarTesteConexao();   // v21 — a próxima tentativa vem com número
+        } finally {
+          clearTimeout(avisoLento);
         }
       });
+    }
+
+    // ═══ v21 · 🩺 TESTAR CONEXÃO ═══════════════════════════════════════════
+    // Só aparece DEPOIS de uma falha de rede — botão permanente na tela de
+    // login seria convite para tocar em vez de entrar. Responde com NÚMERO:
+    // "servidor respondeu em 3,4 s" é um chamado já medido; "não respondeu em
+    // 20 s" separa, na hora, rede do aparelho de servidor fora do ar.
+    // ⚠ Usa a MESMA URL e o MESMO caminho do login (o `ping` do doGet, que
+    //   dispensa key desde o v87). Testar por outro caminho provaria outra
+    //   coisa — foi assim que o v113 mediu um cano que a água não usava.
+    function mostrarTesteConexao() {
+      var el = document.getElementById('hubTesteConexao');
+      if (!el) {
+        el = document.createElement('button');
+        el.id = 'hubTesteConexao';
+        el.type = 'button';
+        el.style.cssText = 'display:block;margin:14px auto 0;padding:10px 16px;border:1px solid #374151;' +
+          'border-radius:10px;background:transparent;color:#9CA3AF;' +
+          'font:600 14px/1 Inter,system-ui,sans-serif;cursor:pointer';
+        el.textContent = '🩺 Testar conexão';
+        el.onclick = testarConexaoHub;
+        var pai = document.getElementById('tela-login');
+        if (pai) pai.appendChild(el); else return;
+      }
+      el.style.display = 'block';
+    }
+    function esconderTesteConexao() {
+      var el = document.getElementById('hubTesteConexao');
+      if (el) el.style.display = 'none';
+    }
+    async function testarConexaoHub() {
+      var el = document.getElementById('hubTesteConexao');
+      var errorEl = document.getElementById('pin-error');
+      if (el) { el.disabled = true; el.textContent = '🩺 Testando…'; }
+      var t0 = Date.now();
+      var opts = { method: 'GET' };
+      try { opts.signal = AbortSignal.timeout(20000); } catch(e) {}
+      try {
+        var r = await fetch(GAS_URL + '?action=ping', opts);
+        var j = await r.json();
+        var seg = ((Date.now() - t0) / 1000).toFixed(1).replace('.', ',');
+        errorEl.style.color = '#9CA3AF';
+        errorEl.textContent = 'Servidor respondeu em ' + seg + ' s (versão ' +
+          ((j && j.version) || '?') + '). A rede deste aparelho está OK.';
+      } catch (e2) {
+        var seg2 = ((Date.now() - t0) / 1000).toFixed(1).replace('.', ',');
+        errorEl.style.color = '';
+        errorEl.textContent = 'Sem resposta em ' + seg2 + ' s (' +
+          ((e2 && e2.name) || 'falha') + '). Tente outra rede (Wi‑Fi × dados) ou avise o Fernando.';
+      } finally {
+        if (el) { el.disabled = false; el.textContent = '🩺 Testar conexão'; }
+      }
     }
 
     // ── SALVAR SESSÃO ──────────────────────────────────────────────────────
@@ -947,6 +1086,15 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
         document.getElementById('btn-entrar').disabled = true;
       }
       mostrarTela('login');
+      // ═══ v21 · PRÉ-AQUECIMENTO ═════════════════════════════════════════
+      // O Apps Script cobra o boot da instância de quem chega primeiro (o
+      // ping puro custou 2,4 s numa instância JÁ quente, em 03/09). Enquanto
+      // a pessoa digita seis dígitos, este ping paga esse boot — e o login,
+      // que é o POST caro, chega numa instância acordada.
+      // ⚠ Fire-and-forget de verdade: `pingGasHub` já engole a falha, e
+      //   NADA na tela depende do resultado. Se falhar, o login segue igual.
+      // ⚠ Só na tela de PIN: quem entrou com sessão válida não gasta rede.
+      try { pingGasHub(8000); } catch (e) {}
     })();
 
     function abrirFormsAvulso() {
