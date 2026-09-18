@@ -141,7 +141,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub · v21</title>
+  <title>ProperHub · v22</title>
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -1107,5 +1107,833 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
     }
   </script>
   <script src="proper-pwa.js"></script>
+<!-- ████ INICIO BLOCOS PADRAO UX (PWAIT + CFX) ████ -->
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PWAIT v1 — A ESPERA FICA VISÍVEL, SEMPRE (+ GUARDA DE BOTÃO)
+     Pedido do Fernando em 17/09/2026: "sempre programar pensando em otimizar
+     tempo de abertura das telas e spinner sempre que for necessário aguardar, ou
+     mensagens avisando e deixando o usuário ciente da espera".
+     O problema que ele resolve: o `_comLoadingBtn_` (PCM v77 / PCF v55) só cobre
+     o BOTÃO que alguém se lembrou de embrulhar. Toda chamada disparada por
+     troca de tela, por refresh de 2º plano ou por um botão esquecido acontecia
+     em silêncio — e no GAS cada chamada custa ~3,5 s fixos (medição de 28/08).
+     Como funciona: PWAIT não pede wiring por tela. Ele CONTA as chamadas em voo
+     (fetch, XMLHttpRequest e o <script> do JSONP dos formulários) e mostra:
+       · barra viva no topo enquanto houver qualquer chamada;
+       · aos 3,5 s, um aviso discreto "aguardando o servidor…";
+       · aos 9 s, o aviso vira explicação ("o Google Sheets às vezes demora…").
+     NUNCA bloqueia a tela e NUNCA interfere na resposta: o wrapper devolve a
+     mesma promessa e repropaga o mesmo erro.
+     ADITIVO: nenhum id, função ou classe existente muda. Tudo em try/catch.
+     ── A GUARDA DE BOTÃO (mesma sentada, antes de qualquer publicação) ────
+     A varredura de paridade mediu **46 botões que gravam sem trava de duplo
+     clique** em 19 arquivos. Consertar 46 call sites é trabalho que envelhece:
+     o 47º nasce sem trava. Então a trava passou a ser MECANISMO, não hábito.
+     `PWAIT.guarda()` escuta clique e submit na fase de CAPTURA e, 130 ms depois
+     do clique, pergunta uma coisa só: **o número de chamadas em voo SUBIU?**
+     Se subiu, aquele clique gerou rede — o botão fica ocupado (⏳ no texto,
+     desabilitado) até a contagem voltar ao que era antes dele. Um 2º clique
+     nesse meio-tempo é ENGOLIDO na captura, antes de chegar ao app.
+     🔑 A atribuição é por DELTA, não por "tem chamada em voo": senão um
+        refresh de 2º plano (o PCM faz vários) desabilitaria botão à toa.
+     ⚠ Fora da guarda, de propósito: pílula/chip/toggle/olho/burger, botão com
+       `aria-pressed` ou `role=switch`, botão de rótulo curto (ícone, seta) e
+       qualquer um com `data-pw-off`. Marcar Ok/NOK/N.A. batendo o dedo não
+       pode esperar por nada.
+     ⚠ BLOCO ÚNICO: copiado BYTE A BYTE nos fronts; a varredura reprova divergência.
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+#pwBar{position:fixed;top:0;left:0;height:3px;width:0;z-index:99500;pointer-events:none;
+  background:linear-gradient(90deg,var(--pw-a),var(--pw-b));box-shadow:0 0 8px var(--pw-a);
+  transition:width .22s ease,opacity .3s ease;opacity:0;border-radius:0 3px 3px 0}
+#pwBar.pw-on{opacity:1}
+#pwMsg{position:fixed;z-index:99501;left:50%;transform:translateX(-50%);top:10px;max-width:calc(100vw - 24px);
+  background:var(--pw-bg);color:var(--pw-fg);border:1px solid var(--pw-line);border-radius:999px;
+  padding:7px 15px;font-size:12.5px;font-family:inherit;box-shadow:0 8px 26px rgba(0,0,0,.3);
+  display:none;align-items:center;gap:9px;line-height:1.35}
+#pwMsg.pw-on{display:flex}
+#pwMsg .pw-sp{width:13px;height:13px;flex:none;border-radius:50%;border:2px solid var(--pw-line);
+  border-top-color:var(--pw-a);animation:pwSpin .8s linear infinite}
+@keyframes pwSpin{to{transform:rotate(360deg)}}
+#pwOv{position:fixed;inset:0;z-index:99400;background:rgba(0,0,0,.42);display:none;
+  align-items:center;justify-content:center;padding:20px}
+#pwOv.pw-on{display:flex}
+#pwOv .pw-cx{background:var(--pw-bg);color:var(--pw-fg);border:1px solid var(--pw-line);border-radius:14px;
+  padding:22px 26px;text-align:center;max-width:340px;font-family:inherit;box-shadow:0 18px 50px rgba(0,0,0,.4)}
+#pwOv .pw-sp2{width:30px;height:30px;margin:0 auto 12px;border-radius:50%;
+  border:3px solid var(--pw-line);border-top-color:var(--pw-a);animation:pwSpin .8s linear infinite}
+#pwOv .pw-t{font-size:14px;font-weight:600}
+#pwOv .pw-s{font-size:12px;opacity:.75;margin-top:6px}
+button.is-busy{opacity:.72;cursor:progress}
+button[data-pw-busy="1"]{opacity:.72;cursor:progress}
+.pw-esq{padding:10px 0}
+.pw-esq i{display:block;height:13px;border-radius:6px;margin:8px 0;
+  background:linear-gradient(90deg,var(--pw-line) 25%,var(--pw-hov) 50%,var(--pw-line) 75%);
+  background-size:400% 100%;animation:pwShim 1.3s linear infinite}
+@keyframes pwShim{0%{background-position:100% 0}100%{background-position:0 0}}
+@media print{#pwBar,#pwMsg,#pwOv{display:none!important}}
+</style>
+<script>
+(function(){
+'use strict';
+try{
+  if(window.PWAIT) return;
+  var VER='PWAIT_V1';
+  var T_AVISO=3500;      // a espera deixa de ser invisível
+  var T_EXPLICA=9000;    // a espera passa a ser explicada
+  var voo=0, t0=0, bar=null, msg=null, ov=null, tA=null, tE=null, raf=null, prog=0;
+
+  function tokens(){
+    try{
+      var cs=getComputedStyle(document.body);
+      var m=/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(cs.backgroundColor||'');
+      var lum=m? (0.299*+m[1]+0.587*+m[2]+0.114*+m[3]) : 255;
+      var claro=lum>=140, r=document.documentElement.style;
+      r.setProperty('--pw-a', claro?'#2563eb':'#f58220');
+      r.setProperty('--pw-b', claro?'#22c55e':'#fbbf24');
+      r.setProperty('--pw-bg', claro?'#ffffff':(m?'rgb('+Math.min(255,+m[1]+16)+','+Math.min(255,+m[2]+18)+','+Math.min(255,+m[3]+24)+')':'#1e293b'));
+      r.setProperty('--pw-fg', cs.color||'inherit');
+      r.setProperty('--pw-line', claro?'#dfe3ea':'rgba(255,255,255,.2)');
+      r.setProperty('--pw-hov', claro?'#f4f6f9':'rgba(255,255,255,.08)');
+    }catch(e){}
+  }
+  function el(id,cls,html){
+    var d=document.getElementById(id);
+    if(d) return d;
+    d=document.createElement('div'); d.id=id; if(cls)d.className=cls; if(html)d.innerHTML=html;
+    (document.body||document.documentElement).appendChild(d);
+    return d;
+  }
+  function montar(){
+    tokens();
+    bar=el('pwBar');
+    msg=el('pwMsg','','<span class="pw-sp"></span><span data-pw-txt>aguardando o servidor…</span>');
+    ov=el('pwOv','','<div class="pw-cx"><div class="pw-sp2"></div><div class="pw-t" data-pw-ovt>Aguarde…</div><div class="pw-s" data-pw-ovs></div></div>');
+  }
+  function pinta(){
+    if(!bar) return;
+    if(voo>0){
+      bar.classList.add('pw-on');
+      prog=prog+ (92-prog)*0.06 + 0.4;           // nunca chega a 100 sozinha
+      if(prog>93) prog=93;
+      bar.style.width=prog.toFixed(1)+'%';
+      raf=requestAnimationFrame(pinta);
+    }else{
+      bar.style.width='100%';
+      setTimeout(function(){ if(voo===0){ bar.classList.remove('pw-on'); bar.style.width='0'; prog=0; } },240);
+    }
+  }
+  function aviso(txt){
+    if(!msg) return;
+    var s=msg.querySelector('[data-pw-txt]'); if(s) s.textContent=txt;
+    msg.classList.add('pw-on');
+  }
+  function some(){ if(msg) msg.classList.remove('pw-on'); }
+
+  function sobe(){
+    voo++;
+    if(voo===1){
+      t0=Date.now(); prog=2;
+      if(!bar) montar();
+      cancelAnimationFrame(raf); raf=requestAnimationFrame(pinta);
+      clearTimeout(tA); clearTimeout(tE);
+      tA=setTimeout(function(){ if(voo>0) aviso('aguardando o servidor…'); },T_AVISO);
+      tE=setTimeout(function(){ if(voo>0) aviso('ainda aguardando — o Google Sheets às vezes leva alguns segundos. Não feche a tela.'); },T_EXPLICA);
+    }
+  }
+  function desce(){
+    voo=Math.max(0,voo-1);
+    if(voo===0){ clearTimeout(tA); clearTimeout(tE); some(); pinta(); }
+  }
+
+  // ── 1) fetch ──
+  try{
+    if(window.fetch && !window.fetch.__pw){
+      var f0=window.fetch.bind(window);
+      var f1=function(){
+        sobe();
+        var p;
+        try{ p=f0.apply(null,arguments); }catch(e){ desce(); throw e; }
+        return p.then(function(r){ desce(); return r; }, function(e){ desce(); throw e; });
+      };
+      f1.__pw=1; window.fetch=f1;
+    }
+  }catch(e){}
+
+  // ── 2) XMLHttpRequest ──
+  try{
+    var XP=window.XMLHttpRequest && window.XMLHttpRequest.prototype;
+    if(XP && !XP.__pw){
+      var s0=XP.send;
+      XP.send=function(){
+        var fim=false, self=this;
+        function ok(){ if(!fim){ fim=true; desce(); } }
+        try{
+          sobe();
+          self.addEventListener('loadend',ok);
+        }catch(e){ ok(); }
+        try{ return s0.apply(self,arguments); }catch(e){ ok(); throw e; }
+      };
+      XP.__pw=1;
+    }
+  }catch(e){}
+
+  // ── 3) JSONP dos formulários: <script src="…/exec?…"> ──
+  // Os forms falam com o GAS por tag <script>, não por fetch. Sem isto, o
+  // "Salvar" de um formulário em campo ficaria exatamente como está hoje:
+  // 20 s de espera com um botão cinza e nenhuma palavra na tela.
+  try{
+    var mo=new MutationObserver(function(recs){
+      for(var i=0;i<recs.length;i++){
+        var ns=recs[i].addedNodes;
+        for(var j=0;j<ns.length;j++){
+          var n=ns[j];
+          if(!n||n.tagName!=='SCRIPT'||!n.src||n.__pw) continue;
+          if(!/script\.google\.com|googleusercontent|supabase/.test(n.src)) continue;
+          n.__pw=1; sobe();
+          var fim=false;
+          var pronto=function(){ if(!fim){ fim=true; desce(); } };
+          n.addEventListener('load',pronto); n.addEventListener('error',pronto);
+          setTimeout(pronto,120000);          // rede que nunca responde não deixa a barra presa
+        }
+      }
+    });
+    mo.observe(document.documentElement,{childList:true,subtree:true});
+  }catch(e){}
+
+
+  // ── 4) GUARDA DE BOTÃO: spinner + trava de duplo clique, sem tocar em call site ──
+  function podeGuardar(b){
+    try{
+      if(!b||!b.tagName) return false;
+      if(b.hasAttribute('data-pw-off')) return false;
+      if(b.closest&&b.closest('[data-pw-off]')) return false;
+      var c=' '+String(b.className||'')+' ';
+      if(/pill|chip|toggle|olho|burger|ecard|-tab|tab-/i.test(c)) return false;
+      if(b.hasAttribute('aria-pressed')) return false;
+      if(String(b.getAttribute('role')||'')==='switch') return false;
+      var t=(b.textContent||'').trim();
+      if(b.type!=='submit' && t.length<4) return false;    // ícone, pílula, seta
+      return true;
+    }catch(e){ return false; }
+  }
+  function ocupar(b,base){
+    if(b.dataset.pwBusy==='1') return;
+    var txt=b.textContent, dis=!!b.disabled, filhos=!!b.querySelector('*');
+    b.dataset.pwBusy='1';
+    b.classList.add('is-busy');
+    if(!filhos && txt && txt.trim().length>3) b.textContent='⏳ '+txt.trim();
+    try{ b.disabled=true; }catch(e){}
+    var t0=Date.now();
+    var iv=setInterval(function(){
+      if(voo<=base || Date.now()-t0>60000){
+        clearInterval(iv);
+        try{
+          b.classList.remove('is-busy');
+          if(!filhos && txt) b.textContent=txt;
+          b.disabled=dis;
+        }catch(e){}
+        delete b.dataset.pwBusy;
+      }
+    },140);
+  }
+  function vigiar(b){
+    var base=voo;
+    setTimeout(function(){ if(voo>base) ocupar(b,base); },130);   // só se ESTE clique gerou rede
+  }
+  function noClique(ev){
+    try{
+      var el=ev.target; if(!el||!el.closest) return;
+      var b=el.closest('button,input[type=submit]'); if(!b) return;
+      if(b.dataset.pwBusy==='1'){                                  // 2º clique: engolido aqui
+        ev.preventDefault(); ev.stopImmediatePropagation();
+        aviso('esse botão já está processando — aguarde a resposta do servidor.');
+        return;
+      }
+      if(podeGuardar(b)) vigiar(b);
+    }catch(e){}
+  }
+  function noSubmit(ev){
+    try{
+      var f=ev.target; if(!f||f.tagName!=='FORM') return;
+      var b=f.querySelector('button[type=submit],input[type=submit],button:not([type])');
+      if(!b) return;
+      if(b.dataset.pwBusy==='1'){ ev.preventDefault(); ev.stopImmediatePropagation(); return; }
+      vigiar(b);
+    }catch(e){}
+  }
+
+  window.PWAIT={
+    versao:VER,
+    guarda:function(){ try{ document.addEventListener('click',noClique,true); document.addEventListener('submit',noSubmit,true); }catch(e){} },
+    podeGuardar:podeGuardar,
+    emVoo:function(){ return voo; },
+    // espera com mensagem própria, para trecho que NÃO é chamada de rede
+    // (gerar PDF, desenhar canvas, montar 2.000 linhas)
+    tela:function(titulo,sub){
+      if(!ov) montar();
+      var a=ov.querySelector('[data-pw-ovt]'), b=ov.querySelector('[data-pw-ovs]');
+      if(a) a.textContent=titulo||'Aguarde…';
+      if(b) b.textContent=sub||'';
+      ov.classList.add('pw-on');
+      return function(){ ov.classList.remove('pw-on'); };
+    },
+    fim:function(){ if(ov) ov.classList.remove('pw-on'); },
+    // só mostra a tela de espera se o trecho passar de `atraso` ms (sem piscada)
+    demorado:function(fn,titulo,sub,atraso){
+      var fechar=null, tt=setTimeout(function(){ fechar=window.PWAIT.tela(titulo,sub); },atraso==null?350:atraso);
+      var pronto=function(){ clearTimeout(tt); if(fechar) fechar(); };
+      var r;
+      try{ r=fn(); }catch(e){ pronto(); throw e; }
+      if(r&&typeof r.then==='function') return r.then(function(v){ pronto(); return v; },function(e){ pronto(); throw e; });
+      pronto(); return r;
+    },
+    // par do _comLoadingBtn_ do PCM/PCF, para os fronts que não têm o helper
+    btn:function(btnEl,fn){
+      if(!btnEl) return fn();
+      var txt=btnEl.textContent, dis=btnEl.disabled;
+      btnEl.disabled=true; btnEl.classList.add('is-busy'); btnEl.textContent='⏳ Processando…';
+      var volta=function(){ btnEl.disabled=dis; btnEl.classList.remove('is-busy'); btnEl.textContent=txt; };
+      var r;
+      try{ r=fn(); }catch(e){ volta(); throw e; }
+      if(r&&typeof r.then==='function') return r.then(function(v){ volta(); return v; },function(e){ volta(); throw e; });
+      volta(); return r;
+    },
+    // esqueleto: a tela mostra a FORMA do conteúdo antes do dado chegar
+    esqueleto:function(alvo,linhas){
+      var t=typeof alvo==='string'? document.getElementById(alvo)||document.querySelector(alvo) : alvo;
+      if(!t) return;
+      var n=linhas||6, h='<div class="pw-esq">';
+      for(var i=0;i<n;i++) h+='<i style="width:'+(96-(i%4)*13)+'%"></i>';
+      t.innerHTML=h+'</div>';
+    }
+  };
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',montar);
+  else montar();
+  window.PWAIT.guarda();
+}catch(e){ try{ console.error('[PWAIT] nao iniciou; a espera segue invisivel',e); }catch(_){} }
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     CFX v1 — FILTRO DE COLUNA (estilo Excel) EM QUALQUER TABELA
+     Pedido do Fernando em 17/09/2026: "toda tela que contém lista de máquinas,
+     clientes, peças etc, os títulos de cada coluna devem ser dotados de filtros".
+     Motivo de existir: o motor XF (V94) resolve isso, mas exige configuração
+     tela por tela — e por isso só 5 das 36 tabelas do PCM tinham filtro. A tela
+     de Inventário (V190) nasceu sem, como toda tela nova nasceria.
+     O CFX não substitui o XF: ele se acopla ao DOM JÁ RENDERIDO, leia quem
+     renderizou. Tabela com `class="xf-table"` é ignorada de propósito.
+     ADITIVO por construção: nenhum id, função, classe ou render existente muda.
+     Tudo dentro de try/catch — o motor NUNCA pode ser a causa de um erro de boot.
+     ⚠ BLOCO ÚNICO: este arquivo é copiado BYTE A BYTE nos fronts. Se divergir
+     entre eles, a varredura NEWFILE_VARREDURA_PARIDADE_UX.py reprova.
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+.cfx-b{all:unset;cursor:pointer;display:inline-block;margin-left:5px;padding:0 3px;font-size:10px;line-height:1;
+  opacity:.45;border-radius:4px;vertical-align:middle;font-family:inherit}
+.cfx-b:hover{opacity:1;background:var(--cfx-hov)}
+.cfx-b.cfx-act{opacity:1;color:var(--cfx-acc);font-weight:700}
+.cfx-menu{position:fixed;z-index:99000;width:262px;max-width:calc(100vw - 16px);background:var(--cfx-bg);
+  color:var(--cfx-fg);border:1px solid var(--cfx-line);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.28);
+  display:none;flex-direction:column;overflow:hidden;font-size:12px;font-family:inherit}
+.cfx-menu.cfx-on{display:flex}
+.cfx-h{padding:8px 11px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--cfx-mut);background:var(--cfx-hov);border-bottom:1px solid var(--cfx-line);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cfx-row{display:flex;gap:6px;padding:7px 9px;border-bottom:1px solid var(--cfx-line)}
+.cfx-row button{flex:1;cursor:pointer;background:var(--cfx-bg);color:var(--cfx-fg);border:1px solid var(--cfx-line);
+  border-radius:7px;padding:6px 4px;font-size:11.5px;font-family:inherit}
+.cfx-row button:hover{border-color:var(--cfx-acc);color:var(--cfx-acc)}
+.cfx-row button.cfx-cur{border-color:var(--cfx-acc);color:var(--cfx-acc);font-weight:700}
+.cfx-menu input{width:100%;box-sizing:border-box;background:var(--cfx-bg);color:var(--cfx-fg);
+  border:1px solid var(--cfx-line);border-radius:7px;padding:6px 9px;font-size:12px;outline:none;font-family:inherit}
+.cfx-menu input:focus{border-color:var(--cfx-acc)}
+.cfx-rg{display:flex;gap:6px;padding:7px 9px;border-bottom:1px solid var(--cfx-line);align-items:center}
+.cfx-rg span{font-size:10px;color:var(--cfx-mut);font-weight:700}
+.cfx-list{max-height:238px;overflow:auto;padding:3px 0}
+.cfx-it{display:flex;align-items:center;gap:8px;padding:5px 11px;cursor:pointer;user-select:none;line-height:1.3}
+.cfx-it:hover{background:var(--cfx-hov)}
+.cfx-it input{width:auto;accent-color:var(--cfx-acc);flex:none;padding:0}
+.cfx-it span.cfx-v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cfx-it b.cfx-n{margin-left:auto;font-size:10px;color:var(--cfx-mut);font-weight:600;flex:none}
+.cfx-it.cfx-all{position:sticky;top:0;background:var(--cfx-bg);border-bottom:1px solid var(--cfx-line);font-weight:700}
+.cfx-foot{display:flex;gap:7px;padding:8px 9px;border-top:1px solid var(--cfx-line);background:var(--cfx-hov)}
+.cfx-foot button{flex:1;cursor:pointer;border-radius:7px;padding:6px 4px;font-size:11.5px;font-family:inherit;
+  border:1px solid var(--cfx-line);background:var(--cfx-bg);color:var(--cfx-fg)}
+.cfx-foot button.cfx-pri{background:var(--cfx-acc);border-color:var(--cfx-acc);color:#fff;font-weight:700}
+.cfx-bar{display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 2px;font-size:11.5px;color:var(--cfx-mut)}
+.cfx-bar.cfx-on{display:flex}
+.cfx-bar b{color:var(--cfx-fg)}
+.cfx-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--cfx-acc);color:var(--cfx-acc);
+  border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;max-width:260px}
+.cfx-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cfx-chip button{all:unset;cursor:pointer;font-size:12px;line-height:1}
+.cfx-clr{all:unset;cursor:pointer;color:var(--cfx-acc);font-weight:700;font-size:11.5px;text-decoration:underline}
+.cfx-hide{display:none!important}
+tr.cfx-vazio td{padding:14px 12px!important;text-align:center;color:var(--cfx-mut);font-style:italic}
+@media print{.cfx-b,.cfx-bar,.cfx-menu{display:none!important}}
+</style>
+<script>
+(function(){
+'use strict';
+try{
+  if(window.CFX) return;
+  var VER='CFX_V1';
+  var MIN_LINHAS=3;          // tabela de 1 ou 2 linhas não ganha filtro (ruído)
+  var MAX_VALORES=400;       // teto de valores distintos listados no menu
+  var MAX_LINHAS=4000;       // acima disso o motor se recusa (e diz por quê)
+  var CAB_IGNORAR={'':1,'#':1,'ações':1,'acoes':1,'ação':1,'acao':1,'ver':1,'abrir':1,'sel':1,' ':1};
+
+  var S={};                  // chave da tabela -> estado {f:{}, sort:null}
+  var vivos=(typeof WeakSet==='function')? new WeakSet() : null;  // botões com handler de verdade
+  var menu=null, mAlvo=null, mCol=-1, mBusca='';
+  var mo=null, timer=null, proprio=0;
+
+  function norm(v){
+    return String(v==null?'':v).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+  }
+  function txt(el){
+    if(!el) return '';
+    var d=el.getAttribute&&el.getAttribute('data-cfx-val');
+    if(d!=null) return String(d).trim();
+    return (el.textContent||'').replace(/\s+/g,' ').trim();
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function dataBR(s){
+    var m=/^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(s).trim());
+    return m? (m[3]+m[2]+m[1]) : null;
+  }
+  function numDe(s){
+    var t=String(s).trim();
+    if(!t) return null;
+    if(!/\d/.test(t)) return null;
+    // aceita  1.234,56  ·  1234  ·  R$ 1.200,00  ·  5.614 h  ·  -3  ·  12%
+    if(!/^[-+]?[\sR$€]*[\d.,]+\s*(h|hs|horas|dias|d|%|km|kg|un|pç|pcs|m|mm|min)?$/i.test(t)) return null;
+    var x=t.replace(/[^\d,.\-+]/g,'');
+    if(x.indexOf(',')>=0) x=x.replace(/\./g,'').replace(',','.');
+    // 🕳 achado da bancada: '1.200' ordenava como 1,2 e ia para ANTES de '90'.
+    // Em pt-BR o ponto é milhar quando os grupos depois dele têm 3 dígitos.
+    else if(/^[-+]?\d{1,3}(\.\d{3})+$/.test(x)) x=x.replace(/\./g,'');
+    else if((x.match(/\./g)||[]).length>1) x=x.replace(/\./g,'');
+    var n=parseFloat(x);
+    return isNaN(n)? null : n;
+  }
+
+  // ── tokens de cor derivados do próprio app (um bloco, seis temas) ──
+  function tokens(){
+    try{
+      var cs=getComputedStyle(document.body);
+      var bg=cs.backgroundColor, fg=cs.color;
+      var m=/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(bg||'');
+      var lum=m? (0.299*+m[1]+0.587*+m[2]+0.114*+m[3]) : 255;
+      var claro=lum>=140;
+      var r=document.documentElement.style;
+      r.setProperty('--cfx-bg', claro?'#ffffff':(m?'rgb('+Math.min(255,+m[1]+14)+','+Math.min(255,+m[2]+16)+','+Math.min(255,+m[3]+22)+')':'#1e293b'));
+      r.setProperty('--cfx-fg', fg||'inherit');
+      r.setProperty('--cfx-mut', claro?'#64748b':'#9aa8bf');
+      r.setProperty('--cfx-line', claro?'#dfe3ea':'rgba(255,255,255,.16)');
+      r.setProperty('--cfx-hov', claro?'#f4f6f9':'rgba(255,255,255,.07)');
+      if(!r.getPropertyValue('--cfx-acc')) r.setProperty('--cfx-acc', claro?'#2563eb':'#f58220');
+    }catch(e){}
+  }
+
+  // ── anatomia da tabela ──
+  function cabecalho(t){
+    if(!t.tHead||!t.tHead.rows.length) return null;
+    var tr=t.tHead.rows[t.tHead.rows.length-1];
+    for(var i=0;i<tr.cells.length;i++) if(tr.cells[i].colSpan>1) return null;  // cabeçalho agrupado: não é grade
+    return tr;
+  }
+  function linhas(t,n){
+    var out=[];
+    for(var b=0;b<t.tBodies.length;b++){
+      var rs=t.tBodies[b].rows;
+      for(var i=0;i<rs.length;i++){
+        var r=rs[i];
+        if(r.hasAttribute('data-cfx-skip')||r.classList.contains('cfx-vazio')) continue;
+        if(r.cells.length!==n) continue;                   // linha de grupo / colspan / "nenhum item"
+        var ok=true;
+        for(var c=0;c<r.cells.length;c++) if(r.cells[c].colSpan>1||r.cells[c].rowSpan>1){ok=false;break;}
+        if(ok) out.push(r);
+      }
+    }
+    return out;
+  }
+  function chave(t,cab){
+    if(t.dataset.cfxKey) return t.dataset.cfxKey;
+    var a=t.parentElement, id='';
+    while(a&&a!==document.body){ if(a.id){id=a.id;break;} a=a.parentElement; }
+    var h=[];
+    for(var i=0;i<cab.cells.length;i++) h.push(norm(txt(cab.cells[i])));
+    return (t.id||id||'raiz')+'#'+h.join('|').slice(0,180);
+  }
+  function est(k){ if(!S[k]) S[k]={f:{},sort:null}; return S[k]; }
+  function temEstado(k){ var e=S[k]; return !!(e&&(e.sort||Object.keys(e.f).length)); }
+
+  // ── colunas que não ganham menu: ação, seleção, só botões ──
+  function filtravel(cab,i,rs){
+    var h=norm(txt(cab.cells[i]));
+    if(CAB_IGNORAR[h]) return false;
+    var n=Math.min(rs.length,12), comCtrl=0, vis=0;
+    for(var k=0;k<n;k++){
+      var td=rs[k].cells[i]; if(!td) continue;
+      vis++;
+      if(td.querySelector&&td.querySelector('button,input,select,textarea,a[onclick]')) comCtrl++;
+    }
+    return !(vis&&comCtrl/vis>0.6);
+  }
+
+  function tipoCol(rs,i){
+    var d=0,nu=0,tot=0;
+    for(var k=0;k<rs.length&&k<60;k++){
+      var v=txt(rs[k].cells[i]); if(!v||v==='—'||v==='-') continue;
+      tot++;
+      if(dataBR(v)) d++; else if(numDe(v)!=null) nu++;
+    }
+    if(!tot) return 'txt';
+    if(d/tot>=0.7) return 'data';
+    if(nu/tot>=0.7) return 'num';
+    return 'txt';
+  }
+  function valOrd(v,tp){
+    if(tp==='data'){ var d=dataBR(v); return d==null?null:+d; }
+    if(tp==='num'){ return numDe(v); }
+    return null;
+  }
+
+  // ── acoplagem ──
+  function acoplar(t){
+    if(t.dataset.cfx) return;
+    if(t.classList.contains('xf-table')) { t.dataset.cfx='xf'; return; }      // motor XF já filtra
+    if(t.getAttribute('data-cfx-off')!=null||t.closest('[data-cfx-off]')){ t.dataset.cfx='off'; return; }
+    var cab=cabecalho(t);
+    if(!cab){ t.dataset.cfx='sem-cabecalho'; return; }
+    var rs=linhas(t,cab.cells.length);
+    if(rs.length<MIN_LINHAS) return;                       // sem marca: volta a ser avaliada quando crescer
+    if(rs.length>MAX_LINHAS){ t.dataset.cfx='grande'; return; }
+    var k=chave(t,cab);
+    t.dataset.cfx='on'; t.dataset.cfxK=k;
+    menusDaTabela(t,cab,rs);
+    barraDaTabela(t,k);
+    aplicar(t);
+  }
+
+  // 🕳 Achado da bancada: `cloneNode`/`outerHTML` COPIA o botão ▾ mas NÃO copia o
+  // handler — a tabela reaparecia com a setinha morta, e clicar nela não fazia nada
+  // (sem erro nenhum no console). Por isso o botão só vale se estiver no WeakSet
+  // de botões que ESTE motor criou nesta página; um clone é descartado e refeito.
+  function menusDaTabela(t,cab,rs){
+    for(var i=0;i<cab.cells.length;i++){
+      var th=cab.cells[i];
+      var velho=th.querySelector('.cfx-b');
+      if(velho){
+        if(!vivos||vivos.has(velho)) continue;
+        velho.parentNode.removeChild(velho);
+      }
+      if(!filtravel(cab,i,rs)) continue;
+      var b=document.createElement('button');
+      b.className='cfx-b'; b.type='button'; b.textContent='▾';
+      b.title='Filtrar e ordenar por esta coluna';
+      b.setAttribute('data-cfx-i',String(i));
+      b.onclick=(function(tab,idx){return function(ev){ ev.preventDefault(); ev.stopPropagation(); abrir(tab,idx,this); };})(t,i);
+      th.appendChild(b);
+      if(vivos) vivos.add(b);
+    }
+  }
+
+  // uma barra por tabela, sempre: re-render deixava a barra velha para trás e o
+  // "limpar tudo" da barra órfã mexia num nó que já não estava na tela.
+  function barraDaTabela(t,k){
+    var orf=document.querySelectorAll('[data-cfx-bar="'+String(k).replace(/"/g,'\\"')+'"]');
+    for(var i=0;i<orf.length;i++) if(orf[i].parentNode) orf[i].parentNode.removeChild(orf[i]);
+    var bar=document.createElement('div');
+    bar.className='cfx-bar';
+    bar.setAttribute('data-cfx-bar',k);
+    (t.parentNode||document.body).insertBefore(bar,t);
+    t._cfxBar=bar;
+    return bar;
+  }
+
+  // ── filtro + ordenação ──
+  function passa(e,r,cab,pular){
+    for(var k in e.f){
+      if(String(k)===String(pular)) continue;
+      var i=+k, f=e.f[k], td=r.cells[i]; if(!td) return false;
+      var v=txt(td);
+      if(f.tipo==='vals'){ if(!f.set[v]) return false; }
+      else if(f.tipo==='fx'){
+        var tp=f.cmp||'txt', x=valOrd(v,tp);
+        if(x==null) return false;
+        if(f.min!=null&&x<f.min) return false;
+        if(f.max!=null&&x>f.max) return false;
+      }
+      else if(f.tipo==='txt'){ if(norm(v).indexOf(f.q)<0) return false; }
+    }
+    return true;
+  }
+
+  function aplicar(t,silencio){
+    var cab=cabecalho(t); if(!cab) return;
+    var rs=linhas(t,cab.cells.length);
+    var e=est(t.dataset.cfxK||chave(t,cab));
+    var vis=0;
+    for(var i=0;i<rs.length;i++){
+      var ok=passa(e,rs[i],cab,null);
+      rs[i].classList.toggle('cfx-hide',!ok);
+      if(ok) vis++;
+    }
+    if(e.sort){
+      var i2=e.sort.i, dir=e.sort.dir, tp=e.sort.tp||'txt';
+      var arr=rs.slice();
+      arr.forEach(function(r,n){ r._cfxN=n; });
+      arr.sort(function(a,b){
+        var va=txt(a.cells[i2]), vb=txt(b.cells[i2]), c;
+        if(tp==='txt'){ c=va.localeCompare(vb,'pt-BR',{numeric:true,sensitivity:'base'}); }
+        else{
+          var xa=valOrd(va,tp), xb=valOrd(vb,tp);
+          if(xa==null&&xb==null) c=0; else if(xa==null) c=1; else if(xb==null) c=-1; else c=xa-xb;
+        }
+        if(c===0) return a._cfxN-b._cfxN;                  // estável
+        return dir==='desc'? -c : c;
+      });
+      var tb=arr.length? arr[0].parentNode : null;
+      if(tb){
+        proprio++;
+        try{ arr.forEach(function(r){ tb.appendChild(r); }); }
+        finally{ if(mo) mo.takeRecords(); proprio--; }
+      }
+    }
+    // linha "nada passou"
+    var antiga=t.querySelector('tr.cfx-vazio'); if(antiga) antiga.remove();
+    if(!vis&&rs.length){
+      var tr=document.createElement('tr'); tr.className='cfx-vazio';
+      var td=document.createElement('td'); td.colSpan=cab.cells.length;
+      td.textContent='Nenhuma linha passa pelos filtros desta tela.';
+      tr.appendChild(td); (rs[0].parentNode||t.tBodies[0]).appendChild(tr);
+    }
+    marcarCab(t,cab,e);
+    barra(t,e,cab,vis,rs.length);
+    t._cfxSig=assinatura(t,cab);
+  }
+
+  function assinatura(t,cab){
+    var rs=linhas(t,cab.cells.length);
+    return rs.length+'/'+(t.tBodies[0]?t.tBodies[0].childElementCount:0)+'/'+(rs[0]?txt(rs[0].cells[0]).length:0);
+  }
+  function marcarCab(t,cab,e){
+    for(var i=0;i<cab.cells.length;i++){
+      var b=cab.cells[i].querySelector('.cfx-b'); if(!b) continue;
+      var f=e.f[i], so=e.sort&&e.sort.i===i;
+      b.classList.toggle('cfx-act',!!f||!!so);
+      b.textContent = f? '▼' : (so? (e.sort.dir==='desc'?'↓':'↑') : '▾');
+    }
+  }
+  function rotulo(cab,i){ var s=txt(cab.cells[i]).replace('▾','').replace('▼','').replace('↑','').replace('↓','').trim(); return s||('coluna '+(i+1)); }
+
+  function barra(t,e,cab,vis,tot){
+    var bar=t._cfxBar; if(!bar||!bar.parentNode) return;
+    var chips=[], n=0;
+    for(var k in e.f){
+      n++;
+      var f=e.f[k], d='';
+      if(f.tipo==='vals') d=Object.keys(f.set).length===1? Object.keys(f.set)[0] : (Object.keys(f.set).length+' valores');
+      else if(f.tipo==='fx') d=(f.min!=null?f.min:'')+'…'+(f.max!=null?f.max:'');
+      else d='contém "'+f.q+'"';
+      chips.push('<span class="cfx-chip"><span>'+esc(rotulo(cab,+k))+': '+esc(d)+'</span><button type="button" title="tirar este filtro" data-cfx-x="'+k+'">✕</button></span>');
+    }
+    if(!n&&!e.sort){ bar.className='cfx-bar'; bar.innerHTML=''; return; }
+    bar.className='cfx-bar cfx-on';
+    bar.innerHTML='🔎 <b>'+vis+'</b> de <b>'+tot+'</b> '+(tot===1?'linha':'linhas')+
+      (e.sort? ' · ordenado por <b>'+esc(rotulo(cab,e.sort.i))+'</b> '+(e.sort.dir==='desc'?'↓':'↑'):'')+
+      (chips.length? ' · '+chips.join(' ') : '')+
+      ' <button type="button" class="cfx-clr" data-cfx-clr="1">limpar tudo</button>';
+    bar.onclick=function(ev){
+      var x=ev.target.closest&&ev.target.closest('[data-cfx-x]');
+      if(x){ delete e.f[x.getAttribute('data-cfx-x')]; aplicar(t); return; }
+      if(ev.target.closest&&ev.target.closest('[data-cfx-clr]')){ e.f={}; e.sort=null; aplicar(t); }
+    };
+  }
+
+  // ── menu ──
+  function fechar(){ if(menu) menu.className='cfx-menu'; mAlvo=null; mCol=-1; mBusca=''; }
+  function abrir(t,i,btn){
+    tokens();
+    if(!menu){
+      menu=document.createElement('div'); menu.className='cfx-menu';
+      document.body.appendChild(menu);
+      menu.addEventListener('click',function(ev){ ev.stopPropagation(); });
+    }
+    if(mAlvo===t&&mCol===i&&menu.classList.contains('cfx-on')){ fechar(); return; }
+    mAlvo=t; mCol=i; mBusca='';
+    pintarMenu();
+    menu.className='cfx-menu cfx-on';
+    var r=btn.getBoundingClientRect();
+    var w=menu.offsetWidth||262, h=menu.offsetHeight||300;
+    var L=Math.max(6,Math.min(r.left, (window.innerWidth||800)-w-6));
+    var T=r.bottom+4;
+    if(T+h>(window.innerHeight||600)-6) T=Math.max(6,r.top-h-4);
+    menu.style.left=L+'px'; menu.style.top=T+'px';
+    var bu=menu.querySelector('[data-cfx-q]'); if(bu) try{bu.focus();}catch(e){}
+  }
+
+  function pintarMenu(){
+    var t=mAlvo, i=mCol; if(!t||i<0) return;
+    var cab=cabecalho(t); if(!cab) return;
+    var rs=linhas(t,cab.cells.length);
+    var e=est(t.dataset.cfxK||chave(t,cab));
+    var tp=tipoCol(rs,i);
+    var f=e.f[i];
+    // contagem estilo Excel: conta o que passa pelos filtros DAS OUTRAS colunas
+    var cont={}, ordem=[];
+    for(var k=0;k<rs.length;k++){
+      if(!passa(e,rs[k],cab,i)) continue;
+      var v=txt(rs[k].cells[i]);
+      if(cont[v]==null){ cont[v]=0; ordem.push(v); }
+      cont[v]++;
+    }
+    if(tp==='data') ordem.sort(function(a,b){ var A=dataBR(a),B=dataBR(b); return (A==null?1:B==null?-1:(A<B?-1:A>B?1:0)); });
+    else if(tp==='num') ordem.sort(function(a,b){ var A=numDe(a),B=numDe(b); return (A==null?1:B==null?-1:A-B); });
+    else ordem.sort(function(a,b){ return String(a).localeCompare(String(b),'pt-BR',{numeric:true,sensitivity:'base'}); });
+
+    var q=norm(mBusca);
+    var mostra=q? ordem.filter(function(v){ return norm(v).indexOf(q)>=0; }) : ordem;
+    var corte=mostra.length>MAX_VALORES;
+    if(corte) mostra=mostra.slice(0,MAX_VALORES);
+    var sel=(f&&f.tipo==='vals')? f.set : null;
+    var todos=mostra.length&&mostra.every(function(v){ return !sel||sel[v]; });
+
+    var h='';
+    h+='<div class="cfx-h" title="'+esc(rotulo(cab,i))+'">'+esc(rotulo(cab,i))+'</div>';
+    h+='<div class="cfx-row">'+
+       '<button type="button" data-cfx-s="asc"'+(e.sort&&e.sort.i===i&&e.sort.dir==='asc'?' class="cfx-cur"':'')+'>'+(tp==='txt'?'↑ A→Z':'↑ menor')+'</button>'+
+       '<button type="button" data-cfx-s="desc"'+(e.sort&&e.sort.i===i&&e.sort.dir==='desc'?' class="cfx-cur"':'')+'>'+(tp==='txt'?'↓ Z→A':'↓ maior')+'</button>'+
+       '</div>';
+    if(tp!=='txt'){
+      var fx=(f&&f.tipo==='fx')?f:{};
+      var ph=tp==='data'?'dd/mm/aaaa':'nº';
+      h+='<div class="cfx-rg"><span>DE</span><input data-cfx-min value="'+esc(fx.minTxt||'')+'" placeholder="'+ph+'" '+
+         'readonly onfocus="this.removeAttribute(\'readonly\')" autocomplete="off" name="cfxmin_nofill" data-lpignore="true" data-1p-ignore>'+
+         '<span>ATÉ</span><input data-cfx-max value="'+esc(fx.maxTxt||'')+'" placeholder="'+ph+'" '+
+         'readonly onfocus="this.removeAttribute(\'readonly\')" autocomplete="off" name="cfxmax_nofill" data-lpignore="true" data-1p-ignore></div>';
+    }
+    h+='<div class="cfx-row" style="border-bottom:none;padding-bottom:4px"><input data-cfx-q value="'+esc(mBusca)+'" placeholder="buscar valor nesta coluna" '+
+       'readonly onfocus="this.removeAttribute(\'readonly\')" autocomplete="off" name="cfxq_nofill" data-lpignore="true" data-1p-ignore></div>';
+    h+='<div class="cfx-list">';
+    h+='<label class="cfx-it cfx-all"><input type="checkbox" data-cfx-todos'+(todos?' checked':'')+'><span class="cfx-v">(Selecionar tudo)</span><b class="cfx-n">'+mostra.length+'</b></label>';
+    for(var n=0;n<mostra.length;n++){
+      var v=mostra[n];
+      h+='<label class="cfx-it"><input type="checkbox" data-cfx-v="'+esc(v)+'"'+((!sel||sel[v])?' checked':'')+'>'+
+         '<span class="cfx-v" title="'+esc(v)+'">'+esc(v===''?'(vazio)':v)+'</span><b class="cfx-n">'+cont[v]+'</b></label>';
+    }
+    if(corte) h+='<div class="cfx-it" style="cursor:default;color:var(--cfx-mut)">…só os '+MAX_VALORES+' primeiros. Use a busca acima.</div>';
+    h+='</div>';
+    h+='<div class="cfx-foot"><button type="button" data-cfx-lim>Limpar coluna</button><button type="button" class="cfx-pri" data-cfx-ok>Fechar</button></div>';
+    menu.innerHTML=h;
+
+    menu.querySelectorAll('[data-cfx-s]').forEach(function(b){
+      b.onclick=function(){
+        var dir=b.getAttribute('data-cfx-s');
+        if(e.sort&&e.sort.i===i&&e.sort.dir===dir) e.sort=null; else e.sort={i:i,dir:dir,tp:tp};
+        aplicar(t); pintarMenu();
+      };
+    });
+    var qi=menu.querySelector('[data-cfx-q]');
+    if(qi) qi.oninput=function(){ mBusca=qi.value; var p=qi.selectionStart; pintarMenu(); var n2=menu.querySelector('[data-cfx-q]'); if(n2){ n2.focus(); try{n2.setSelectionRange(p,p);}catch(_){} } };
+    var lo=menu.querySelector('[data-cfx-min]'), hi=menu.querySelector('[data-cfx-max]');
+    function faixa(){
+      var a=lo?lo.value.trim():'', b=hi?hi.value.trim():'';
+      if(!a&&!b){ delete e.f[i]; }
+      else e.f[i]={tipo:'fx',cmp:tp,minTxt:a,maxTxt:b,min:a?valOrd(a,tp):null,max:b?valOrd(b,tp):null};
+      aplicar(t);
+    }
+    if(lo){ lo.onchange=faixa; lo.oninput=faixa; }
+    if(hi){ hi.onchange=faixa; hi.oninput=faixa; }
+    var tds=menu.querySelector('[data-cfx-todos]');
+    if(tds) tds.onchange=function(){
+      if(tds.checked){ delete e.f[i]; }
+      else { var s={}; e.f[i]={tipo:'vals',set:s}; }                 // desmarcar tudo = nada passa
+      aplicar(t); pintarMenu();
+    };
+    menu.querySelectorAll('[data-cfx-v]').forEach(function(cb){
+      cb.onchange=function(){
+        var atual=(e.f[i]&&e.f[i].tipo==='vals')? e.f[i].set : null;
+        var s={};
+        if(atual) for(var kk in atual) s[kk]=1;
+        else ordem.forEach(function(v){ s[v]=1; });                  // primeiro clique parte de "todos"
+        var v=cb.getAttribute('data-cfx-v');
+        if(cb.checked) s[v]=1; else delete s[v];
+        var faltam=ordem.some(function(v2){ return !s[v2]; });
+        if(!faltam) delete e.f[i]; else e.f[i]={tipo:'vals',set:s};
+        aplicar(t); pintarMenu();
+      };
+    });
+    var lim=menu.querySelector('[data-cfx-lim]');
+    if(lim) lim.onclick=function(){ delete e.f[i]; if(e.sort&&e.sort.i===i) e.sort=null; aplicar(t); pintarMenu(); };
+    var ok=menu.querySelector('[data-cfx-ok]');
+    if(ok) ok.onclick=fechar;
+  }
+
+  // ── varredura: acopla tabela nova, reaplica estado após re-render ──
+  function varrer(){
+    try{
+      proprio++;
+      tokens();
+      var todas=document.querySelectorAll('table');
+      for(var i=0;i<todas.length;i++){
+        var t=todas[i];
+        if(!t.dataset.cfx){ acoplar(t); continue; }
+        if(t.dataset.cfx!=='on') continue;
+        var cab=cabecalho(t); if(!cab) continue;
+        if(!t._cfxBar||!t._cfxBar.parentNode||t._cfxBar.nextSibling!==t) barraDaTabela(t,t.dataset.cfxK||chave(t,cab));
+        if(assinatura(t,cab)!==t._cfxSig){
+          menusDaTabela(t,cab,linhas(t,cab.cells.length));
+          aplicar(t);
+        }
+      }
+    }catch(e){ try{console.error('[CFX] varredura',e);}catch(_){} }
+    finally{ if(mo) mo.takeRecords(); proprio--; }
+  }
+  function agenda(){ clearTimeout(timer); timer=setTimeout(varrer,160); }
+
+  function iniciar(){
+    tokens();
+    varrer();
+    try{
+      mo=new MutationObserver(function(){ if(proprio>0) return; agenda(); });
+      mo.observe(document.documentElement,{childList:true,subtree:true});
+    }catch(e){}
+    document.addEventListener('click',function(ev){
+      if(menu&&menu.classList.contains('cfx-on')&&!menu.contains(ev.target)&&!(ev.target.closest&&ev.target.closest('.cfx-b'))) fechar();
+    },true);
+    document.addEventListener('keydown',function(ev){ if(ev.key==='Escape') fechar(); });
+    window.addEventListener('resize',fechar);
+  }
+
+  window.CFX={
+    versao:VER,
+    varrer:varrer,
+    limpar:function(sel){ var t=typeof sel==='string'?document.querySelector(sel):sel; if(!t) return; var e=est(t.dataset.cfxK||''); e.f={}; e.sort=null; aplicar(t); },
+    desligar:function(sel){ var t=typeof sel==='string'?document.querySelector(sel):sel; if(t) t.setAttribute('data-cfx-off',''); },
+    estado:function(){ return S; },
+    diag:function(){
+      var o={versao:VER,tabelas:[]};
+      document.querySelectorAll('table').forEach(function(t){
+        o.tabelas.push({cfx:t.dataset.cfx||'(nao avaliada)',chave:t.dataset.cfxK||'',menus:t.querySelectorAll('.cfx-b').length,linhas:(t.tBodies[0]?t.tBodies[0].rows.length:0)});
+      });
+      return o;
+    }
+  };
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar);
+  else iniciar();
+}catch(e){ try{ console.error('[CFX] nao iniciou; tabelas seguem sem filtro',e); }catch(_){} }
+})();
+</script>
+
+<!-- ████ FIM BLOCOS PADRAO UX ████ -->
 </body>
 </html>
