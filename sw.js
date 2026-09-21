@@ -8,7 +8,8 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app.
  * O activate abaixo apaga qualquer cache antigo com prefixo 'properhub-'.
  */
-const CACHE = 'properhub-v22'; // 17/09/2026: par do index v22 (motores CFX + PWAIT)
+const CACHE = 'properhub-v23'; // 17/09/2026: par do index v23 (bloco CARIMBO: versao na tela derivada)
+// (nota anterior: // 17/09/2026: par do index v22 (motores CFX + PWAIT)
 // (nota anterior: // 03/09/2026: par do index v21 (login com sem_os, prazo de 45 s
                                // e tarja global sem "Script error." pelado). O bump aqui NÃO é
                                // detalhe: sem ele o celular que já abriu o Hub continua servindo

@@ -141,7 +141,8 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub · v22</title>
+  <title>ProperHub · v23</title>
+<meta name="app-build" content="v23" data-date="2026-09-17">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -506,7 +507,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub">ProperCare · Acesso unificado · v6</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v23</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -1931,6 +1932,84 @@ try{
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar);
   else iniciar();
 }catch(e){ try{ console.error('[CFX] nao iniciou; tabelas seguem sem filtro',e); }catch(_){} }
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     CARIMBO v1 — A VERSÃO NA TELA É DERIVADA, NUNCA DIGITADA
+     Achado do Fernando em 17/09/2026, com o PCM V191 JÁ PUBLICADO: a barra
+     lateral continuava dizendo `v4.03 · V190`. O `<title>` estava certo (é o
+     que o manifesto lê), mas o rodapé da barra é um literal escrito à mão que
+     ninguém bumpa. E não era um: o card "Sobre o sistema" dizia **PCM V118** —
+     28 versões atrás. No ProperHub, o subtítulo dizia **v6** num app v22.
+     🕳 Esta é a TERCEIRA vez que o mesmo defeito aparece: o V132 já tinha
+        consertado o rodapé que dizia `v3.53 · V129`, e o próprio CLAUDE.md já
+        registrava a lição ("carimbo duplicado à mão é carimbo que vai
+        divergir"). Consertar a ocorrência nunca cura a classe — o que cura é
+        não haver segundo lugar para esquecer.
+     ⇒ Regra: o texto de versão que o humano lê sai do `<meta name="app-build">`
+       (e, se ele faltar, do `<title>`). O elemento declara o formato em
+       `data-carimbo`, com `{v}` = versão curta (V192) e `{V}` = a completa
+       (PCM_V192). O PCF já fazia isso desde o V97 (`pcfCarimbarVersao`); este
+       bloco é a mesma ideia, genérica, para os fronts que não faziam.
+     ⚠ Silencioso e defensivo de propósito: sem fonte, ele NÃO INVENTA — deixa
+       o texto que está no HTML. Carimbo errado é pior que carimbo velho.
+     ⚠ BLOCO ÚNICO: copiado BYTE A BYTE; a varredura reprova divergência, e
+       reprova também literal de versão na tela que discorde do `<title>`.
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+try{
+  if(window.CARIMBO) return;
+
+  function daMeta(){
+    var m=document.querySelector('meta[name="app-build"]');
+    return m? String(m.getAttribute('content')||'').trim() : '';
+  }
+  function doTitle(){
+    var t=String(document.title||'');
+    var m=/\(([^()]*\bV\d+[^()]*)\)/.exec(t);              // "… (PCM V192)"
+    if(m) return m[1].trim();
+    m=/build\s+([A-Za-z]*_?V?\d+[\w.]*)/i.exec(t);          // "… build PCF_V110"
+    if(m) return m[1].trim();
+    m=/·\s*(v\d+(?:\.\d+)*)\s*$/i.exec(t);                  // "ProperHub · v23"
+    if(m) return m[1].trim();
+    return '';
+  }
+  function versao(){ return daMeta() || doTitle(); }
+  function curto(v){
+    return String(v).replace(/^(PCM|PCF|PORTAL|MURAL|HUB)[\s_-]*/i,'').trim();
+  }
+  function pintar(){
+    var v=versao();
+    if(!v) return 0;                                        // sem fonte, não inventa
+    var els=document.querySelectorAll('[data-carimbo]'), n=0;
+    for(var i=0;i<els.length;i++){
+      var tpl=els[i].getAttribute('data-carimbo')||'{v}';
+      var txt=tpl.split('{v}').join(curto(v)).split('{V}').join(v);
+      if(els[i].textContent!==txt){ els[i].textContent=txt; }
+      n++;
+    }
+    window.CARIMBO.versao=v;
+    window.CARIMBO.pintados=n;
+    return n;
+  }
+
+  window.CARIMBO={ bloco:'CARIMBO_V1', versao:'', pintados:0, pintar:pintar, lida:versao };
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',pintar);
+  else pintar();
+  // a barra lateral e o card "Sobre o sistema" são repintados pelo app;
+  // o observador garante que o carimbo volte junto, sem custo perceptível.
+  try{
+    var mo=new MutationObserver(function(){
+      clearTimeout(window.CARIMBO._t);
+      window.CARIMBO._t=setTimeout(pintar,200);
+    });
+    mo.observe(document.documentElement,{childList:true,subtree:true});
+  }catch(e){}
+}catch(e){ try{ console.error('[CARIMBO] nao iniciou; a tela mantem o texto do HTML',e); }catch(_){} }
 })();
 </script>
 
