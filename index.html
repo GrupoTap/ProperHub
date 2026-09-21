@@ -141,8 +141,26 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>ProperHub · v23</title>
-<meta name="app-build" content="v23" data-date="2026-09-17">
+  <!--
+  ══════════════════════════════════════════════════════════════════════
+  ProperHub v24 — GUARDA DE BOTÃO v2 (bloco PWAIT_V2)            21/09/2026
+  ══════════════════════════════════════════════════════════════════════
+  🔴 Fernando, 21/09: "estou tentando editar OS mas fica só processando e
+     não abre pra salvar... é toda OS". O servidor gravava (saveOS medido
+     em ~15 s); quem travava era a GUARDA DE BOTÃO do bloco PWAIT v1.
+  A guarda fotografava o botão 130 ms DEPOIS do clique — quando o
+  `_comLoadingBtn_` do app já o tinha posto em "⏳ Processando…" e
+  desabilitado. Na volta, o app devolvia "Salvar"/habilitado e a guarda
+  repunha a foto velha POR CIMA: botão morto até o F5. Como o elemento é
+  o mesmo para toda OS, virava "não consigo editar OS nenhuma".
+  ⇒ v2: foto tirada na CAPTURA do clique · botão que já tem dono não é
+    tomado · na volta só desfaz o que ela escreveu e só SOLTA o `disabled`.
+  ZERO GAS, ZERO SQL. Só o bloco muda — nenhuma linha do app foi tocada.
+  Bancada: _testes/NEWFILE_T_CFX_PWAIT.mjs
+  ══════════════════════════════════════════════════════════════════════
+-->
+<title>ProperHub · v24</title>
+<meta name="app-build" content="v24" data-date="2026-09-21">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -507,7 +525,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v23</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v24</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -1141,6 +1159,28 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
        `aria-pressed` ou `role=switch`, botão de rótulo curto (ícone, seta) e
        qualquer um com `data-pw-off`. Marcar Ok/NOK/N.A. batendo o dedo não
        pode esperar por nada.
+     ── v2 · 21/09/2026 · 🕳 O BOTÃO QUE MORRIA DE "⏳ PROCESSANDO…" ──────────
+     Fernando, 21/09: "estou tentando editar OS mas fica só processando e não
+     abre pra salvar; pelo que vi é toda OS". Reproduzido no Chrome dele e na
+     bancada: o servidor gravava em ~15 s, a rede ia e voltava — quem travava
+     era ESTA guarda.
+     A guarda tirava a foto do botão (texto e `disabled`) **130 ms depois do
+     clique** — e nesse instante o `_comLoadingBtn_` do app JÁ tinha posto o
+     botão em "⏳ Processando…" e `disabled=true`. Quando a resposta chegava, o
+     `finally` do app devolvia "Salvar"/habilitado corretamente e, até 140 ms
+     depois, a guarda **devolvia a foto velha por cima**: "⏳ Processando…" e
+     desabilitado — para sempre, porque botão desabilitado não recebe clique.
+     Um clique matava o Salvar do modal de OS até o F5; como o elemento é o
+     mesmo para toda OS, virava "não consigo editar OS nenhuma".
+     🔑 A regra que nasce daqui, e vale para qualquer guarda global:
+        **SÓ DESFAÇA O QUE VOCÊ FEZ, E NUNCA PRENDA NA VOLTA.**
+        v2: (a) a foto é tirada na CAPTURA do clique, antes do handler do app;
+            (b) botão que já tem dono (`_comLoadingBtn_`/`is-busy`/
+                `data-pcm-enviando`) a guarda NÃO TOMA — dois donos, um sobra;
+            (c) na volta, o texto só é restaurado se ainda for o que a guarda
+                escreveu, e `disabled` só é SOLTO (nunca reposto em true).
+     ⚠ Dois mecanismos mexendo no mesmo atributo precisam de dono único. Isto
+       não é "esquisitice do PCM": qualquer front com trava própria cairia.
      ⚠ BLOCO ÚNICO: copiado BYTE A BYTE nos fronts; a varredura reprova divergência.
      ═══════════════════════════════════════════════════════════════════════════ -->
 <style>
@@ -1179,7 +1219,7 @@ button[data-pw-busy="1"]{opacity:.72;cursor:progress}
 'use strict';
 try{
   if(window.PWAIT) return;
-  var VER='PWAIT_V1';
+  var VER='PWAIT_V2';
   var T_AVISO=3500;      // a espera deixa de ser invisível
   var T_EXPLICA=9000;    // a espera passa a ser explicada
   var voo=0, t0=0, bar=null, msg=null, ov=null, tA=null, tE=null, raf=null, prog=0;
@@ -1318,29 +1358,47 @@ try{
       return true;
     }catch(e){ return false; }
   }
-  function ocupar(b,base){
+  // v2 — o botão já tem dono? (`_comLoadingBtn_` do PCM v77 / PCF v55, ou trava
+  // própria do call site). Dois donos mexendo em `disabled` = botão preso.
+  function donoApp(b){
+    try{
+      return b.dataset.loadingOriginalText!==undefined ||
+             b.dataset.pcmEnviando!==undefined ||
+             b.dataset.pfEnviando!==undefined;
+    }catch(e){ return true; }                 // na dúvida, NÃO tomo o botão
+  }
+  function temDono(b){
+    try{ return donoApp(b) || !!(b.classList && b.classList.contains('is-busy')); }
+    catch(e){ return true; }
+  }
+  // txt0/dis0 vêm da CAPTURA do clique — antes de o app mexer no botão.
+  function ocupar(b,base,txt0,dis0){
     if(b.dataset.pwBusy==='1') return;
-    var txt=b.textContent, dis=!!b.disabled, filhos=!!b.querySelector('*');
+    if(temDono(b)) return;                    // o app já cuida deste botão
+    var filhos=!!b.querySelector('*');
+    var escrito=null, euPrendi=false;
     b.dataset.pwBusy='1';
     b.classList.add('is-busy');
-    if(!filhos && txt && txt.trim().length>3) b.textContent='⏳ '+txt.trim();
-    try{ b.disabled=true; }catch(e){}
+    if(!filhos && txt0 && txt0.trim().length>3){ escrito='⏳ '+txt0.trim(); b.textContent=escrito; }
+    if(!dis0){ try{ b.disabled=true; euPrendi=true; }catch(e){} }
     var t0=Date.now();
     var iv=setInterval(function(){
       if(voo<=base || Date.now()-t0>60000){
         clearInterval(iv);
         try{
-          b.classList.remove('is-busy');
-          if(!filhos && txt) b.textContent=txt;
-          b.disabled=dis;
+          if(!donoApp(b)) b.classList.remove('is-busy');
+          // só desfaço o que EU escrevi: se outro mudou o texto, o dele fica
+          if(escrito!==null && b.textContent===escrito) b.textContent=txt0;
+          // e só SOLTO: repor disabled=true é o que matava o Salvar do modal
+          if(euPrendi && b.disabled) b.disabled=false;
         }catch(e){}
         delete b.dataset.pwBusy;
       }
     },140);
   }
   function vigiar(b){
-    var base=voo;
-    setTimeout(function(){ if(voo>base) ocupar(b,base); },130);   // só se ESTE clique gerou rede
+    var base=voo, txt0=b.textContent, dis0=!!b.disabled;   // foto ANTES do handler do app
+    setTimeout(function(){ if(voo>base) ocupar(b,base,txt0,dis0); },130);   // só se ESTE clique gerou rede
   }
   function noClique(ev){
     try{

@@ -8,7 +8,7 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app.
  * O activate abaixo apaga qualquer cache antigo com prefixo 'properhub-'.
  */
-const CACHE = 'properhub-v23'; // 17/09/2026: par do index v23 (bloco CARIMBO: versao na tela derivada)
+const CACHE = 'properhub-v24';  // 21/09/2026 — par do index v24 (guarda de botão v2). // 17/09/2026: par do index v23 (bloco CARIMBO: versao na tela derivada)
 // (nota anterior: // 17/09/2026: par do index v22 (motores CFX + PWAIT)
 // (nota anterior: // 03/09/2026: par do index v21 (login com sem_os, prazo de 45 s
                                // e tarja global sem "Script error." pelado). O bump aqui NÃO é
