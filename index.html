@@ -159,8 +159,23 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   Bancada: _testes/NEWFILE_T_CFX_PWAIT.mjs
   ══════════════════════════════════════════════════════════════════════
 -->
-<title>ProperHub · v24</title>
-<meta name="app-build" content="v24" data-date="2026-09-21">
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  ProperHub v25 — PWAIT v3: A ESPERA APARECE, MAS NÃO ATRAPALHA     26/09/2026
+  ══════════════════════════════════════════════════════════════════════
+  Fernando, 24/09 (PCF, prints 1 e 11): "mensagens PWAIT irritantes,
+  cortadas". A pílula ficava no TOPO, por cima do cabeçalho, com frase
+  longa cortada — e aparecia até para refresh de 2º plano.
+  ⇒ v3: pílula no RODAPÉ, uma linha, sem receber toque, acima da barra
+    fixa de baixo · mensagem só para a espera que alguém PEDIU (chamada
+    até 1,5 s depois de um toque) · PWAIT.silencioso(fn) · frases curtas.
+    A guarda de botão do v2 não mudou.
+  ZERO GAS, ZERO SQL neste arquivo por causa do bloco.
+  Bancada: _testes/NEWFILE_T_PWAIT_V3.mjs
+  ══════════════════════════════════════════════════════════════════════
+-->
+<title>ProperHub · v25</title>
+<meta name="app-build" content="v25" data-date="2026-09-26">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -525,7 +540,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v24</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v25</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -1181,6 +1196,24 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
                 escreveu, e `disabled` só é SOLTO (nunca reposto em true).
      ⚠ Dois mecanismos mexendo no mesmo atributo precisam de dono único. Isto
        não é "esquisitice do PCM": qualquer front com trava própria cairia.
+     ── v3 · 26/09/2026 · A ESPERA APARECE, MAS NÃO ATRAPALHA ────────────────
+     Fernando, 24/09 (prints 1 e 11 do PCF): "carregamento longo e mensagens
+     PWAIT irritantes, cortadas". A pílula ficava NO TOPO, por cima do cabeçalho
+     (justo onde estão o número da OS e o botão de voltar), com uma frase longa
+     cortada em duas linhas — e aparecia até para o refresh de 2º plano que
+     ninguém pediu.
+     v3: (a) a pílula desce para o RODAPÉ, uma linha só (reticências), sem
+             receber toque (`pointer-events:none`), acima da barra fixa de baixo
+             quando houver (`--pw-bottom` no :root, ou `data-pw-dock` / #dock /
+             .dock detectados sozinhos);
+         (b) mensagem SÓ para a espera que alguém PEDIU: a chamada que começa
+             até 1,5 s depois de um toque/tecla. Refresh de 2º plano fica só na
+             barra fina do topo — que continua dizendo "tem rede em andamento";
+         (c) `PWAIT.silencioso(fn)`: o que fn dispara de forma síncrona não conta
+             nem para a barra (pré-carga do PCF, pings);
+         (d) frases curtas: "aguardando o servidor…" (3,5 s) e "servidor lento —
+             aguarde, não feche" (9 s).
+     A guarda de botão NÃO mudou (regras do v2 intactas).
      ⚠ BLOCO ÚNICO: copiado BYTE A BYTE nos fronts; a varredura reprova divergência.
      ═══════════════════════════════════════════════════════════════════════════ -->
 <style>
@@ -1188,10 +1221,12 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   background:linear-gradient(90deg,var(--pw-a),var(--pw-b));box-shadow:0 0 8px var(--pw-a);
   transition:width .22s ease,opacity .3s ease;opacity:0;border-radius:0 3px 3px 0}
 #pwBar.pw-on{opacity:1}
-#pwMsg{position:fixed;z-index:99501;left:50%;transform:translateX(-50%);top:10px;max-width:calc(100vw - 24px);
+#pwMsg{position:fixed;z-index:99501;left:50%;transform:translateX(-50%);top:auto;
+  bottom:calc(var(--pw-bottom,14px) + env(safe-area-inset-bottom,0px));max-width:calc(100vw - 32px);
   background:var(--pw-bg);color:var(--pw-fg);border:1px solid var(--pw-line);border-radius:999px;
-  padding:7px 15px;font-size:12.5px;font-family:inherit;box-shadow:0 8px 26px rgba(0,0,0,.3);
-  display:none;align-items:center;gap:9px;line-height:1.35}
+  padding:5px 12px;font-size:12px;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.28);
+  display:none;align-items:center;gap:8px;line-height:1.3;pointer-events:none;opacity:.94;white-space:nowrap}
+#pwMsg [data-pw-txt]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 #pwMsg.pw-on{display:flex}
 #pwMsg .pw-sp{width:13px;height:13px;flex:none;border-radius:50%;border:2px solid var(--pw-line);
   border-top-color:var(--pw-a);animation:pwSpin .8s linear infinite}
@@ -1219,10 +1254,11 @@ button[data-pw-busy="1"]{opacity:.72;cursor:progress}
 'use strict';
 try{
   if(window.PWAIT) return;
-  var VER='PWAIT_V2';
-  var T_AVISO=3500;      // a espera deixa de ser invisível
-  var T_EXPLICA=9000;    // a espera passa a ser explicada
-  var voo=0, t0=0, bar=null, msg=null, ov=null, tA=null, tE=null, raf=null, prog=0;
+  var VER='PWAIT_V3';
+  var T_AVISO=3500;      // a espera PEDIDA deixa de ser invisível
+  var T_EXPLICA=9000;    // a espera PEDIDA passa a ser explicada
+  var T_GESTO=1500;      // v3: chamada que nasce até 1,5 s depois de um toque = alguém está esperando por ela
+  var voo=0, vooG=0, mudo=0, gesto=0, t0=0, bar=null, msg=null, ov=null, tA=null, tE=null, raf=null, prog=0;
 
   function tokens(){
     try{
@@ -1264,38 +1300,69 @@ try{
       setTimeout(function(){ if(voo===0){ bar.classList.remove('pw-on'); bar.style.width='0'; prog=0; } },240);
     }
   }
+  // v3 — a pílula fica ACIMA da barra fixa de baixo, se houver. O front pode
+  // mandar (--pw-bottom no :root); se não mandar, procura a barra sozinho.
+  function rodape(){
+    try{
+      var r=document.documentElement;
+      if(String(getComputedStyle(r).getPropertyValue('--pw-bottom')||'').trim()) return;
+      var d=document.querySelector('[data-pw-dock],#dock,.dock');
+      var h=0;
+      if(d && d.getClientRects().length){                 // (offsetParent é null em position:fixed)
+        var cs=getComputedStyle(d), bb=d.getBoundingClientRect();
+        if((cs.position==='fixed'||cs.position==='sticky') && bb.bottom>=window.innerHeight-4) h=Math.round(bb.height);
+      }
+      if(msg) msg.style.bottom = h ? ('calc(' + (h+10) + 'px + env(safe-area-inset-bottom,0px))') : '';
+    }catch(e){}
+  }
   function aviso(txt){
     if(!msg) return;
     var s=msg.querySelector('[data-pw-txt]'); if(s) s.textContent=txt;
+    rodape();
     msg.classList.add('pw-on');
   }
   function some(){ if(msg) msg.classList.remove('pw-on'); }
 
+  // v3 — sobe() devolve se a chamada é PEDIDA (nasceu logo depois de um gesto);
+  // quem chama guarda e devolve o mesmo valor ao desce(). Só as pedidas falam.
+  function agendarAvisos(){
+    clearTimeout(tA); clearTimeout(tE);
+    tA=setTimeout(function(){ if(vooG>0) aviso('aguardando o servidor…'); },T_AVISO);
+    tE=setTimeout(function(){ if(vooG>0) aviso('servidor lento — aguarde, não feche'); },T_EXPLICA);
+  }
   function sobe(){
+    var pedida = (Date.now()-gesto) <= T_GESTO;
     voo++;
     if(voo===1){
       t0=Date.now(); prog=2;
       if(!bar) montar();
       cancelAnimationFrame(raf); raf=requestAnimationFrame(pinta);
-      clearTimeout(tA); clearTimeout(tE);
-      tA=setTimeout(function(){ if(voo>0) aviso('aguardando o servidor…'); },T_AVISO);
-      tE=setTimeout(function(){ if(voo>0) aviso('ainda aguardando — o Google Sheets às vezes leva alguns segundos. Não feche a tela.'); },T_EXPLICA);
     }
+    if(pedida){ vooG++; if(vooG===1) agendarAvisos(); }
+    return pedida;
   }
-  function desce(){
+  function desce(pedida){
     voo=Math.max(0,voo-1);
-    if(voo===0){ clearTimeout(tA); clearTimeout(tE); some(); pinta(); }
+    if(pedida){ vooG=Math.max(0,vooG-1); if(vooG===0){ clearTimeout(tA); clearTimeout(tE); some(); } }
+    if(voo===0){ clearTimeout(tA); clearTimeout(tE); vooG=0; some(); pinta(); }
   }
+  // o gesto que torna a próxima chamada "pedida" (captura: antes do app)
+  try{
+    ['pointerdown','keydown','submit'].forEach(function(tp){
+      document.addEventListener(tp,function(){ gesto=Date.now(); },true);
+    });
+  }catch(e){}
 
   // ── 1) fetch ──
   try{
     if(window.fetch && !window.fetch.__pw){
       var f0=window.fetch.bind(window);
       var f1=function(){
-        sobe();
+        if(mudo>0) return f0.apply(null,arguments);          // v3: PWAIT.silencioso
+        var pd=sobe();
         var p;
-        try{ p=f0.apply(null,arguments); }catch(e){ desce(); throw e; }
-        return p.then(function(r){ desce(); return r; }, function(e){ desce(); throw e; });
+        try{ p=f0.apply(null,arguments); }catch(e){ desce(pd); throw e; }
+        return p.then(function(r){ desce(pd); return r; }, function(e){ desce(pd); throw e; });
       };
       f1.__pw=1; window.fetch=f1;
     }
@@ -1307,10 +1374,11 @@ try{
     if(XP && !XP.__pw){
       var s0=XP.send;
       XP.send=function(){
-        var fim=false, self=this;
-        function ok(){ if(!fim){ fim=true; desce(); } }
+        var fim=false, self=this, pd=false;
+        if(mudo>0) return s0.apply(self,arguments);          // v3: PWAIT.silencioso
+        function ok(){ if(!fim){ fim=true; desce(pd); } }
         try{
-          sobe();
+          pd=sobe();
           self.addEventListener('loadend',ok);
         }catch(e){ ok(); }
         try{ return s0.apply(self,arguments); }catch(e){ ok(); throw e; }
@@ -1331,9 +1399,11 @@ try{
           var n=ns[j];
           if(!n||n.tagName!=='SCRIPT'||!n.src||n.__pw) continue;
           if(!/script\.google\.com|googleusercontent|supabase/.test(n.src)) continue;
-          n.__pw=1; sobe();
+          n.__pw=1;
+          if(mudo>0) continue;                                  // v3: PWAIT.silencioso
+          var pd=sobe();
           var fim=false;
-          var pronto=function(){ if(!fim){ fim=true; desce(); } };
+          var pronto=(function(pd0){ return function(){ if(!fim){ fim=true; desce(pd0); } }; })(pd);
           n.addEventListener('load',pronto); n.addEventListener('error',pronto);
           setTimeout(pronto,120000);          // rede que nunca responde não deixa a barra presa
         }
@@ -1406,7 +1476,8 @@ try{
       var b=el.closest('button,input[type=submit]'); if(!b) return;
       if(b.dataset.pwBusy==='1'){                                  // 2º clique: engolido aqui
         ev.preventDefault(); ev.stopImmediatePropagation();
-        aviso('esse botão já está processando — aguarde a resposta do servidor.');
+        aviso('já está processando — aguarde');
+        setTimeout(function(){ if(vooG===0) some(); },2500);   // v3: não fica pendurado por causa de refresh de 2º plano
         return;
       }
       if(podeGuardar(b)) vigiar(b);
@@ -1427,6 +1498,16 @@ try{
     guarda:function(){ try{ document.addEventListener('click',noClique,true); document.addEventListener('submit',noSubmit,true); }catch(e){} },
     podeGuardar:podeGuardar,
     emVoo:function(){ return voo; },
+    // v3 — o que fn dispara de forma SÍNCRONA não conta (nem barra, nem aviso):
+    // pré-carga, ping, refresh que o usuário não pediu. Continuações assíncronas
+    // (um fetch dentro de um .then) NÃO herdam o silêncio — embrulhe-as também.
+    // ⚠ O JSONP (<script> dos formulários) também não: quem o conta é um
+    //   MutationObserver, que roda depois de fn já ter voltado.
+    silencioso:function(fn){
+      mudo++;
+      try{ return fn(); } finally{ mudo=Math.max(0,mudo-1); }
+    },
+    emVooPedidas:function(){ return vooG; },
     // espera com mensagem própria, para trecho que NÃO é chamada de rede
     // (gerar PDF, desenhar canvas, montar 2.000 linhas)
     tela:function(titulo,sub){
