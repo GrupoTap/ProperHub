@@ -199,8 +199,24 @@ Agora: sessão vencida com rede vai direto à tela de PIN; offline só com prova
 a faixa tem botões próprios e empurra a página, o Sair fica à vista. + favicon.
 ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _testes/T_HUB_V27.mjs
 -->
-<title>ProperHub · v27</title>
-<meta name="app-build" content="v27" data-date="2026-09-27">
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  ProperHub v28 — PWAIT v4: A GUARDA SÓ PROTEGE O QUE O USUÁRIO VÊ   27/09/2026
+  ══════════════════════════════════════════════════════════════════════
+  Fernando, 27/09 (PCM, "Editar peça"): o botão Salvar já abria girando,
+  sem nada digitado. Causa: o savePart FECHA a janela e grava em 2º plano;
+  a guarda de botão do PWAIT via a rede subir e tomava o botão escondido
+  até a fila acabar (ou 60 s). A próxima peça reusava o mesmo botão.
+  ⇒ v4: botão fora da tela nunca é tomado, e o tomado é solto quando a
+    janela fecha. Botão À VISTA continua protegido como no v3 (auditoria
+    independente). Regras do v2 e do v3 intactas.
+  Par de service worker: properhub-v28 (publicar os DOIS juntos).
+  ZERO GAS, ZERO SQL neste arquivo por causa do bloco.
+  Bancada: _testes/T_PWAIT_V4.mjs · _testes/T_PCM_JANELAS_V201.mjs
+  ══════════════════════════════════════════════════════════════════════
+-->
+<title>ProperHub · v28</title>
+<meta name="app-build" content="v28" data-date="2026-09-27">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -565,7 +581,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v27</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v28</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -1416,7 +1432,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   <script src="proper-pwa.js"></script>
 <!-- ████ INICIO BLOCOS PADRAO UX (PWAIT + CFX) ████ -->
 <!-- ═══════════════════════════════════════════════════════════════════════════
-     PWAIT v1 — A ESPERA FICA VISÍVEL, SEMPRE (+ GUARDA DE BOTÃO)
+     PWAIT v1 — A ESPERA FICA VISÍVEL, SEMPRE (+ GUARDA DE BOTÃO)   · hoje: v4
      Pedido do Fernando em 17/09/2026: "sempre programar pensando em otimizar
      tempo de abertura das telas e spinner sempre que for necessário aguardar, ou
      mensagens avisando e deixando o usuário ciente da espera".
@@ -1487,6 +1503,34 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
          (d) frases curtas: "aguardando o servidor…" (3,5 s) e "servidor lento —
              aguarde, não feche" (9 s).
      A guarda de botão NÃO mudou (regras do v2 intactas).
+     ── v4 · 27/09/2026 · 🕳 O "SALVAR" QUE JÁ ABRIA CARREGANDO ──────────────
+     Fernando, 27/09 (PCM, "Editar peça"): "isso está acontecendo logo ao abrir
+     essa janela, não faz sentido o botão salvar ficar carregando sendo que não
+     digitei nenhuma modificação". Reproduzido no PCM V198 real, na bancada.
+     O "Salvar peça" usa a trava do app (`_semDuploEnvio_`), mas o savePart é
+     SÍNCRONO: grava local, FECHA a janela e manda o modelo ao servidor em 2º
+     plano (saveModel + 1 chamada por peça + equivalências + reconcile — num
+     modelo de 10 peças passa de um minuto). O app solta o botão no mesmo
+     instante. 130 ms depois a guarda via "a rede subiu", o botão sem dono, e o
+     TOMAVA — escondido dentro de uma janela já fechada — até a fila acabar ou
+     60 s. A próxima peça aberta reusa o MESMO botão: Salvar girando sem nada
+     digitado. Mesmo desenho em Salvar modelo / subsistema / máquina / peças da
+     máquina / subsistema da biblioteca, "Confirmar" do editor de tarefa e todo
+     botão que fecha a janela e grava depois.
+     🔑 A regra que nasce daqui: **A GUARDA SÓ PROTEGE O QUE O USUÁRIO VÊ, E
+        NUNCA SEGURA O QUE NINGUÉM CONSEGUE CLICAR.**
+        v4: botão que NÃO ESTÁ À VISTA (janela fechada, fora do DOM) nunca é
+            tomado — e o que a guarda tomou é SOLTO no instante em que some
+            (a janela fecha). Ninguém clica duas vezes num botão escondido, e
+            reabrir a janela nunca herda a espera de antes.
+     ⚠ O 1º desenho do v4 tinha uma 2ª regra ("clique que a trava do app
+       tocou é do app, mesmo que ela já o tenha soltado"). A auditoria
+       independente derrubou: no "💾 Salvar peças" da máquina (função
+       síncrona, janela que CONTINUA aberta) ela deixava o 2º toque passar
+       entre 130 ms e o fim da rede — 2 gravações onde o v3 fazia 1. Saiu.
+       Botão À VISTA continua protegido exatamente como no v3.
+     As regras do v2 (foto na captura, dono único, só soltar) e do v3 (pílula
+     no rodapé, só espera pedida fala) continuam intactas.
      ⚠ BLOCO ÚNICO: copiado BYTE A BYTE nos fronts; a varredura reprova divergência.
      ═══════════════════════════════════════════════════════════════════════════ -->
 <style>
@@ -1527,7 +1571,7 @@ button[data-pw-busy="1"]{opacity:.72;cursor:progress}
 'use strict';
 try{
   if(window.PWAIT) return;
-  var VER='PWAIT_V3';
+  var VER='PWAIT_V4';
   var T_AVISO=3500;      // a espera PEDIDA deixa de ser invisível
   var T_EXPLICA=9000;    // a espera PEDIDA passa a ser explicada
   var T_GESTO=1500;      // v3: chamada que nasce até 1,5 s depois de um toque = alguém está esperando por ela
@@ -1701,6 +1745,17 @@ try{
       return true;
     }catch(e){ return false; }
   }
+  // v4 — o botão está À VISTA? Janela fechada (display:none num ancestral),
+  // fora do DOM ou visibility:hidden = não. Na dúvida (API ausente/erro): sim,
+  // para não afrouxar a trava de quem está na tela.
+  function visivel(b){
+    try{
+      if(!b.isConnected) return false;
+      if(typeof b.checkVisibility==='function')
+        return b.checkVisibility({visibilityProperty:true, checkVisibilityCSS:true});
+      return b.getClientRects().length>0;
+    }catch(e){ return true; }
+  }
   // v2 — o botão já tem dono? (`_comLoadingBtn_` do PCM v77 / PCF v55, ou trava
   // própria do call site). Dois donos mexendo em `disabled` = botão preso.
   function donoApp(b){
@@ -1717,6 +1772,7 @@ try{
   // txt0/dis0 vêm da CAPTURA do clique — antes de o app mexer no botão.
   function ocupar(b,base,txt0,dis0){
     if(b.dataset.pwBusy==='1') return;
+    if(!visivel(b)) return;                   // v4: escondido não se toma
     if(temDono(b)) return;                    // o app já cuida deste botão
     var filhos=!!b.querySelector('*');
     var escrito=null, euPrendi=false;
@@ -1726,7 +1782,7 @@ try{
     if(!dis0){ try{ b.disabled=true; euPrendi=true; }catch(e){} }
     var t0=Date.now();
     var iv=setInterval(function(){
-      if(voo<=base || Date.now()-t0>60000){
+      if(voo<=base || Date.now()-t0>60000 || !visivel(b)){      // v4: sumiu da tela = solta já
         clearInterval(iv);
         try{
           if(!donoApp(b)) b.classList.remove('is-busy');
@@ -1741,7 +1797,7 @@ try{
   }
   function vigiar(b){
     var base=voo, txt0=b.textContent, dis0=!!b.disabled;   // foto ANTES do handler do app
-    setTimeout(function(){ if(voo>base) ocupar(b,base,txt0,dis0); },130);   // só se ESTE clique gerou rede
+    setTimeout(function(){ if(voo>base && visivel(b)) ocupar(b,base,txt0,dis0); },130);   // só se ESTE clique gerou rede · v4: e se o botão ainda está À VISTA
   }
   function noClique(ev){
     try{
