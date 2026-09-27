@@ -141,6 +141,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   <meta name="apple-mobile-web-app-title" content="ProperHub">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
   <!--
   ══════════════════════════════════════════════════════════════════════
   ProperHub v24 — GUARDA DE BOTÃO v2 (bloco PWAIT_V2)            21/09/2026
@@ -184,8 +185,22 @@ Uma vez a cada 30 dias; computador não pede. Com GAS antigo o login é o de sem
 Linha nova no menu: "Leitura de placas ativa / Ativar" (pede o PIN de novo).
 Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
 -->
-<title>ProperHub · v26</title>
-<meta name="app-build" content="v26" data-date="2026-09-26">
+<!--
+ProperHub_index_v27.html
+v27 — 27/09/2026 — O AVISO DE SESSÃO VENCIDA QUE NÃO SAÍA DO LUGAR.
+Fernando, 27/09: a faixa laranja "Modo offline — sessão expirada" aparecia no PC e no
+celular com internet, nada acontecia, não voltava à tela de PIN, e cobria o Sair.
+Causa medida no Chrome dele: o ping do GAS leva 2,2 a 3,9 s já quente; o Hub dava 4 s.
+Estourou, virou "offline" com rede, e a única volta era o evento online do navegador,
+que nunca dispara quando a rede nunca caiu.
+Agora: sessão vencida com rede vai direto à tela de PIN; offline só com prova
+(navegador sem rede ou 15 s sem resposta), e aos 6 s a tela de PIN oferece
+"Continuar sem internet"; no modo offline o Hub tenta de novo sozinho a cada 30 s;
+a faixa tem botões próprios e empurra a página, o Sair fica à vista. + favicon.
+ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _testes/T_HUB_V27.mjs
+-->
+<title>ProperHub · v27</title>
+<meta name="app-build" content="v27" data-date="2026-09-27">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -550,7 +565,7 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v26</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v27</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -819,6 +834,7 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
       //   erro de quem digitou; apagar obrigava a redigitar seis dígitos por
       //   causa de sinal ruim.
       // ═════════════════════════════════════════════════════════════════════
+      try { _v27BotaoOffline(false); } catch(e) {}   // v27
       await _comLoadingBtn_(btn, async () => {
         btn.textContent = 'Verificando...';
         var avisoLento = setTimeout(function () {
@@ -874,6 +890,7 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
             ? 'O servidor não respondeu em 45 s. O PIN continua digitado — toque em Entrar de novo.'
             : 'Erro de conexão (' + ((err && err.message) || 'sem detalhe') + '). O PIN continua digitado.';
           mostrarTesteConexao();   // v21 — a próxima tentativa vem com número
+          setTimeout(function(){ try { _v27BotaoOffline(true); } catch(e) {} }, 0);   // v27 — depois de o botão Entrar ser solto; só aparece se havia sessão vencida
         } finally {
           clearTimeout(avisoLento);
         }
@@ -947,6 +964,7 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
         token_at:    new Date().toISOString()
       };
       salvarSessaoStorage(JSON.stringify(session));
+      try { _v27LoginOk(); } catch(e) {}   // v27
     }
     // ── RENDERIZAR MENU ────────────────────────────────────────────────────
     // Ordem de exibição canônica (sempre a mesma independente do perfil)
@@ -1036,6 +1054,7 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
 
     // ── SAIR ───────────────────────────────────────────────────────────────
     function sair() {
+      try { _v27SairDoModoOffline(); } catch(e) {}   // v27
       limparSessaoStorage();
       document.getElementById('pin-input').value = '';
       document.getElementById('pin-error').textContent = '';
@@ -1043,6 +1062,34 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
     }
 
     // ── v16: TOLERÂNCIA OFFLINE DA SESSÃO ─────────────────────────────────
+    // ═══ v27 · 27/09/2026 · O AVISO QUE NÃO SAÍA DO LUGAR ═══════════════════
+    // Fernando, 27/09 (prints do PC e do celular): "aparece com frequência e
+    // nada acontece, não volta pra tela de login ou demora muito, e o botão
+    // Sair fica encoberto pela mensagem".
+    // 🕳 Causa medida no Chrome dele (27/09 19h): o `?action=ping` levou de
+    //    2,2 s a 3,9 s em 12 chamadas SEGUIDAS, com a instância já quente. O v16
+    //    dava 4 s. Quem abre o Hub com a sessão vencida é, quase sempre, quem
+    //    abre o dia — instância fria, mais lenta ainda. O ping estourava, e o
+    //    Hub concluía "modo offline" num aparelho que tinha rede.
+    //    E daí não saía nunca: a única volta era o evento `online`, que o
+    //    navegador só dispara quando ESTEVE offline. Com rede o tempo todo, ele
+    //    nunca vem. O banner era `position:fixed` no topo, por cima do
+    //    cabeçalho — cobrindo o "Sair", a única outra saída.
+    // ⇒ v27 (as funções mantêm o nome; só o corpo muda):
+    //   1. Sessão vencida COM rede vai DIRETO à tela de PIN — sem esperar o
+    //      ping e sem mostrar o menu antes. É onde a pessoa quer chegar.
+    //   2. "Offline" só com PROVA: o navegador diz `navigator.onLine=false`, ou
+    //      o servidor não respondeu em 15 s (não 4). Aos 6 s sem resposta a
+    //      tela de PIN oferece "Continuar sem internet" — quem está sem sinal
+    //      não fica trancado (a razão de o v16 existir continua valendo).
+    //   3. No modo offline o Hub TENTA DE NOVO sozinho (a cada 30 s com a tela
+    //      visível, ao voltar para a tela e no evento `online`) e, quando o
+    //      servidor responde, leva à tela de PIN. Nunca mais depende só do
+    //      `online`.
+    //   4. O banner tem os próprios botões ("Tentar agora" · "Entrar com PIN")
+    //      e EMPURRA a página para baixo em vez de cobri-la: o "Sair" fica
+    //      sempre à vista.
+    // ═════════════════════════════════════════════════════════════════════
     // Sessão expirada (>8h) só é descartada quando o GAS está alcançável —
     // ou seja, quando existe rede para o técnico relogar. Sem rede, o campo
     // não fica trancado: entra em modo offline com banner e renova depois.
@@ -1057,51 +1104,261 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
         .catch(function(){ return false; });
     }
 
-    function mostrarBannerOfflineHub(msg, clicavel) {
+    // v27 — o ping que ninguém pediu não acende a barra de espera do PWAIT
+    // (ele só é carregado depois deste script; no init ainda não existe).
+    var V27_PING_MS = 15000;          // 15 s: o ping medido vai de 2,2 a 3,9 s quente
+    var V27_OFERECER_OFFLINE_MS = 6000;
+    var V27_REPETIR_MS = 30000;
+    function _v27Ping() {
+      try {
+        if (window.PWAIT && typeof PWAIT.silencioso === 'function')
+          return PWAIT.silencioso(function(){ return pingGasHub(V27_PING_MS); });
+      } catch(e) {}
+      return pingGasHub(V27_PING_MS);
+    }
+
+    // `ger` (geração): todo login bem-sucedido e todo Sair a incrementam. Resposta
+    // de ping que partiu ANTES disso é descartada — senão o ping da sessão velha
+    // apagaria a sessão NOVA do storage (auditoria independente de 27/09, achado A).
+    var _v27 = { raw: null, session: null, offline: false, tentando: false, timer: null, ligado: false, ger: 0 };
+
+    // chamado pelo salvarSessao(): login deu certo ⇒ a sessão vencida deixou de existir
+    function _v27LoginOk() {
+      _v27.ger++;
+      _v27.raw = null; _v27.session = null; _v27.offline = false; _v27.voltou = false;
+      _v27BotaoOffline(false);
+      esconderBannerOfflineHub();
+    }
+    // login em voo: "Continuar offline" não pode entrar por cima dele
+    function _v27LoginEmVoo() {
+      var b = document.getElementById('btn-entrar');
+      return !!(b && (b.disabled || b.classList.contains('is-busy')));
+    }
+
+    // hora em que a sessão venceu (token_at + 8 h), para o banner dizer o fato
+    function _v27VenceuAs(session) {
+      try {
+        var d = new Date(new Date(session.token_at).getTime() + 8 * 60 * 60 * 1000);
+        if (isNaN(d.getTime())) return '';
+        var hoje = new Date();
+        var hh = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        if (d.toDateString() === hoje.toDateString()) return 'às ' + hh;
+        return 'em ' + ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + ' ' + hh;
+      } catch(e) { return ''; }
+    }
+
+    // O banner EMPURRA a página (espaçador com a altura dele) em vez de cobri-la.
+    function _v27AjustarEspaco() {
+      var el = document.getElementById('hubOfflineBanner');
+      var esp = document.getElementById('hubOfflineEspaco');
+      var visivel = !!(el && el.style.display !== 'none');
+      if (!esp) {
+        if (!visivel) return;
+        esp = document.createElement('div');
+        esp.id = 'hubOfflineEspaco';
+        esp.setAttribute('aria-hidden', 'true');
+        document.body.insertBefore(esp, document.body.firstChild);
+      }
+      esp.style.height = visivel ? (el.offsetHeight + 'px') : '0px';
+      esp.style.display = visivel ? 'block' : 'none';
+      // a lista de Formulários Avulsos é fixed/inset:0 — o espaçador não a empurra;
+      // sem isto a faixa cobre o "‹" de fechar (achado D da auditoria)
+      var ov = document.getElementById('overlay-forms-avulso');
+      if (ov) ov.style.paddingTop = visivel ? (el.offsetHeight + 24) + 'px' : '24px';
+    }
+    window.addEventListener('resize', function(){ try { _v27AjustarEspaco(); } catch(e) {} });
+
+    // acoes: [{rotulo, fn, id}] — botões dentro do banner (nunca o banner inteiro
+    // como botão escondido: o toque tem de ter cara de toque).
+    function _v27Banner(msg, acoes) {
       var el = document.getElementById('hubOfflineBanner');
       if (!el) {
         el = document.createElement('div');
         el.id = 'hubOfflineBanner';
-        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;' +
-          'background:#92400e;color:#fef3c7;font:600 13px/1.4 Inter,system-ui,sans-serif;' +
-          'padding:10px 14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.4)';
+        el.setAttribute('role', 'status');
         document.body.appendChild(el);
       }
-      el.textContent = msg;
-      el.style.cursor = clicavel ? 'pointer' : 'default';
-      el.onclick = clicavel ? function(){ esconderBannerOfflineHub(); sair(); } : null;
-      el.style.display = 'block';
+      el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;' +
+        'background:#92400e;color:#fef3c7;font:600 13px/1.4 Inter,system-ui,sans-serif;' +
+        'padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;text-align:center;' +
+        'box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;flex-wrap:wrap;align-items:center;' +
+        'justify-content:center;gap:6px 10px';
+      el.onclick = null;
+      el.innerHTML = '';
+      var t = document.createElement('span');
+      t.textContent = msg;
+      t.style.cssText = 'flex:1 1 220px;min-width:0';
+      el.appendChild(t);
+      (acoes || []).forEach(function(a) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        if (a.id) b.id = a.id;
+        b.textContent = a.rotulo;
+        b.setAttribute('data-pw-off', '');   // a guarda de botão do PWAIT não se mete
+        b.style.cssText = 'flex:0 0 auto;background:#fef3c7;color:#78350f;border:0;border-radius:8px;' +
+          'padding:7px 12px;min-height:34px;font:700 13px/1 Inter,system-ui,sans-serif;cursor:pointer';
+        b.onclick = function(ev) { try { ev.stopPropagation(); } catch(e) {} a.fn(); };
+        el.appendChild(b);
+      });
+      el.style.display = 'flex';
+      _v27AjustarEspaco();
+      return el;
+    }
+
+    // Nome antigo mantido (regra: nada é renomeado). `clicavel` agora vira um
+    // BOTÃO "Entrar com PIN" dentro do banner, em vez do banner inteiro clicável.
+    function mostrarBannerOfflineHub(msg, clicavel) {
+      return _v27Banner(msg, clicavel ? [{ rotulo: 'Entrar com PIN', fn: function(){ esconderBannerOfflineHub(); sair(); } }] : []);
     }
     function esconderBannerOfflineHub() {
       var el = document.getElementById('hubOfflineBanner');
       if (el) el.style.display = 'none';
+      _v27AjustarEspaco();
+    }
+
+    // ── tela de PIN com a sessão vencida ──
+    // `provado`: o servidor RESPONDEU (há rede para relogar). Só então a sessão
+    // vencida sai do storage — antes disso, fechar o app no meio não pode custar
+    // a sessão de quem está sem sinal (achado C). Sem prova, a tela de PIN já
+    // oferece "Continuar offline" de volta (achado B).
+    function _v27IrParaPin(msg, provado, oferecer) {
+      _v27.offline = false; _v27.voltou = false;
+      esconderBannerOfflineHub();
+      // rede provada ⇒ a sessão vencida some do storage E da memória: ninguém a oferece de novo
+      if (provado) { limparSessaoStorage(); _v27.raw = null; _v27.session = null; }
+      var inp = document.getElementById('pin-input');
+      var err = document.getElementById('pin-error');
+      if (inp) inp.value = '';
+      if (err) { err.style.color = ''; err.textContent = msg || 'Sessão expirada — digite o PIN para renovar.'; }
+      mostrarTela('login');
+      _v27BotaoOffline(!!oferecer && !provado);
+      try { if (inp) inp.focus(); } catch(e) {}
+    }
+
+    // "Continuar sem internet" — aparece na tela de PIN só quando o servidor
+    // não respondeu em 6 s (ou o navegador já diz que está sem rede).
+    function _v27BotaoOffline(mostrar) {
+      var el = document.getElementById('hubContinuarOffline');
+      if (!mostrar) { if (el) el.style.display = 'none'; return; }
+      if (!_v27.raw || _v27LoginEmVoo()) return;
+      if (!el) {
+        el = document.createElement('button');
+        el.id = 'hubContinuarOffline';
+        el.type = 'button';
+        el.setAttribute('data-pw-off', '');
+        el.style.cssText = 'display:block;margin:14px auto 0;padding:10px 16px;border:1px solid #92400e;' +
+          'border-radius:10px;background:transparent;color:#FBBF24;' +
+          'font:600 14px/1.3 Inter,system-ui,sans-serif;cursor:pointer;max-width:320px';
+        el.onclick = function() { _v27EntrarOffline(); };
+        var pai = document.getElementById('tela-login');
+        if (pai) pai.appendChild(el); else return;
+      }
+      var nome = (_v27.session && (_v27.session.nome_tecnico || (_v27.session.tecnico && _v27.session.tecnico.nome))) || '';
+      el.textContent = '📴 Sem internet? Continuar offline' + (nome ? ' como ' + nome : '');
+      el.style.display = 'block';
+    }
+
+    // ── modo offline: menu com a sessão vencida + banner + novas tentativas ──
+    function _v27EntrarOffline() {
+      if (!_v27.raw || !_v27.session) { _v27BotaoOffline(false); return; }
+      if (_v27LoginEmVoo()) return;   // o login que está saindo decide
+      _v27BotaoOffline(false);
+      _v27.offline = true;
+      salvarSessaoStorage(_v27.raw); // re-hidrata sessionStorage p/ PCF/PCM (v13)
+      renderMenu(_v27.session);
+      mostrarTela('menu');
+      _v27BannerOffline('');
+      _v27LigarTentativas();
+    }
+    function _v27BannerOffline(situacao) {
+      var quando = _v27VenceuAs(_v27.session);
+      _v27Banner('📴 Sem conexão com o servidor. Sessão vencida' + (quando ? ' ' + quando : '') +
+        ' — renove o PIN quando houver sinal.' + (situacao ? ' ' + situacao : ''), [
+        { id: 'hubOfflineTentar', rotulo: _v27.tentando ? '⏳ Verificando…' : '↻ Tentar agora', fn: function(){ _v27Tentar(true); } },
+        { id: 'hubOfflinePin', rotulo: 'Entrar com PIN', fn: function(){ _v27IrParaPin('Digite o PIN para renovar a sessão.', false, true); } }
+      ]);
+    }
+    function _v27Tentar(manual) {
+      if (!_v27.offline || _v27.tentando) return;
+      if (navigator.onLine === false) { if (manual) _v27BannerOffline('(o aparelho está sem rede)'); return; }
+      _v27.tentando = true;
+      _v27BannerOffline('');
+      var ger = _v27.ger;
+      _v27Ping().then(function(ok) {
+        _v27.tentando = false;
+        if (!_v27.offline || ger !== _v27.ger) return;
+        if (ok) { _v27RedeVoltou(); return; }
+        _v27BannerOffline('(sem resposta — nova tentativa em ' + Math.round(V27_REPETIR_MS / 1000) + ' s)');
+      });
+    }
+    // Voltou a rede: leva à tela de PIN — a não ser que a pessoa esteja no meio
+    // de algo DENTRO do Hub (lista de formulários avulsos aberta, PIN da placa
+    // sendo digitado). Aí o banner só oferece o botão; ninguém é expulso.
+    function _v27Ocupado() {
+      var ov = document.getElementById('overlay-forms-avulso');
+      var pinPlaca = document.getElementById('v26Pin');
+      return !!((ov && ov.style.display !== 'none') || (pinPlaca && pinPlaca.style.display !== 'none'));
+    }
+    // "voltou" com algo aberto: assim que a pessoa fechar, vai à tela de PIN
+    // (fecharFormsAvulso chama isto; o relógio de 30 s também — 2ª passada, achado 1)
+    function _v27ChecarVoltou() {
+      if (!_v27.voltou || _v27Ocupado()) return;
+      _v27IrParaPin('A conexão voltou — digite o PIN para renovar a sessão.', true);
+    }
+    function _v27RedeVoltou() {
+      if (_v27Ocupado()) {
+        _v27.offline = false;   // rede provada: para de tentar (e de repintar "Sem conexão") — achado F
+        _v27.voltou = true;
+        _v27Banner('🔄 A conexão voltou — renove o login quando terminar.', [
+          { id: 'hubOfflinePin', rotulo: 'Entrar com PIN', fn: function(){ try { fecharFormsAvulso(); } catch(e) {} _v27IrParaPin('Digite o PIN para renovar a sessão.', true); } }
+        ]);
+        return;
+      }
+      _v27IrParaPin('A conexão voltou — digite o PIN para renovar a sessão.', true);
+    }
+    function _v27LigarTentativas() {
+      if (_v27.ligado) return;
+      _v27.ligado = true;
+      _v27.timer = setInterval(function() {
+        if (document.visibilityState === 'visible') { _v27ChecarVoltou(); _v27Tentar(false); }
+      }, V27_REPETIR_MS);
+      window.addEventListener('online', function(){ _v27Tentar(false); });
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') _v27Tentar(false);
+      });
+    }
+    // chamado pelo sair(): sair do modo offline por qualquer porta limpa o banner
+    function _v27SairDoModoOffline() {
+      _v27.ger++;
+      _v27.raw = null; _v27.session = null; _v27.voltou = false;   // Sair é sair: não oferece a sessão de ninguém depois (achado E)
+      _v27.offline = false;
+      _v27BotaoOffline(false);
+      esconderBannerOfflineHub();
     }
 
     function entrarComGraceOffline(raw, session) {
-      // Entra no menu imediatamente (não deixa o técnico esperando timeout
-      // na tela de PIN) e, em paralelo, testa o GAS: alcançável => política
-      // padrão (sessão expirada exige novo PIN, igual ao v15).
-      salvarSessaoStorage(raw); // re-hidrata sessionStorage p/ PCF/PCM (v13)
-      renderMenu(session);
-      mostrarTela('menu');
-      mostrarBannerOfflineHub('⏳ Sessão expirada — verificando conexão…');
-      pingGasHub(4000).then(function(ok) {
+      _v27.raw = raw; _v27.session = session;
+      // (a) o navegador JÁ sabe que está sem rede: offline na hora, sem esperar nada.
+      if (navigator.onLine === false) { _v27EntrarOffline(); return; }
+      // (b) com rede (ou sem saber): direto à tela de PIN. O ping corre por trás
+      //     para decidir: respondeu ⇒ a sessão vencida sai do storage; não
+      //     respondeu em 6 s ⇒ oferece "Continuar sem internet".
+      _v27IrParaPin('Sessão expirada — digite o PIN para renovar.', false);
+      var ger = _v27.ger;
+      var naTela = function() { return ger === _v27.ger && document.getElementById('tela-login').style.display !== 'none'; };
+      var respondeu = false;
+      var oferta = setTimeout(function() {
+        if (!respondeu && naTela() && !_v27LoginEmVoo()) _v27BotaoOffline(true);
+      }, V27_OFERECER_OFFLINE_MS);
+      _v27Ping().then(function(ok) {
+        respondeu = true;
+        clearTimeout(oferta);
+        if (ger !== _v27.ger) return;          // alguém logou ou saiu nesse meio-tempo
         if (ok) {
-          limparSessaoStorage();
-          esconderBannerOfflineHub();
-          document.getElementById('pin-input').value = '';
-          document.getElementById('pin-error').textContent = 'Sessão expirada — faça login novamente.';
-          mostrarTela('login');
-          return;
+          if (_v27.offline) { _v27RedeVoltou(); return; }   // tocou "Continuar offline" e o servidor respondeu depois
+          _v27BotaoOffline(false); limparSessaoStorage(); _v27.raw = null; _v27.session = null; return;
         }
-        mostrarBannerOfflineHub('📴 Modo offline — sessão expirada. Renove o login quando houver sinal.');
-        // v18 — {once:true}: antes, cada oscilação de rede numa sessão longa
-        // acumulava listener e re-disparava pingGasHub.
-        window.addEventListener('online', function() {
-          pingGasHub(4000).then(function(ok2) {
-            if (ok2) mostrarBannerOfflineHub('🔄 Rede disponível — toque aqui para renovar o login.', true);
-          });
-        }, { once: true });
+        if (naTela() && !_v27LoginEmVoo()) _v27BotaoOffline(true);
       });
     }
 
@@ -1153,6 +1410,7 @@ Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
     function fecharFormsAvulso() {
       document.getElementById('overlay-forms-avulso').style.display = 'none';
       document.body.style.overflow = '';
+      try { _v27ChecarVoltou(); } catch(e) {}   // v27
     }
   </script>
   <script src="proper-pwa.js"></script>
