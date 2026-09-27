@@ -174,8 +174,18 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
   Bancada: _testes/NEWFILE_T_PWAIT_V3.mjs
   ══════════════════════════════════════════════════════════════════════
 -->
-<title>ProperHub · v25</title>
-<meta name="app-build" content="v25" data-date="2026-09-26">
+<!--
+ProperHub_index_v26.html
+v26 — 26/09/2026 — O CRACHÁ DO CELULAR PARA A PLACA. Par do GAS v149 e do Portal V17.
+O Portal deixou de mostrar o link "equipe Proper" na tela da placa (ressalva do
+Fernando). Ao entrar com o PIN NUM CELULAR, o login pede um crachá ao GAS v149,
+leva-o ao Portal uma vez (e volta), e daí a câmera abre a placa direto na ficha.
+Uma vez a cada 30 dias; computador não pede. Com GAS antigo o login é o de sempre.
+Linha nova no menu: "Leitura de placas ativa / Ativar" (pede o PIN de novo).
+Par: sw.js properhub-v25 → properhub-v26. Bancada: _testes/T_HUB_V26.mjs
+-->
+<title>ProperHub · v26</title>
+<meta name="app-build" content="v26" data-date="2026-09-26">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -540,7 +550,7 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v25</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v26</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -833,7 +843,10 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
               //   ignorado e o login continua funcionando como sempre — só
               //   sem o ganho. É por isso que dá para publicar os dois na
               //   ordem que for.
-              sem_os:    1
+              sem_os:    1,
+              // v26 — crachá do celular para a placa (ver o bloco v26 no fim do arquivo)
+              marca_portal: (typeof _v26PedirMarca === 'function' && _v26PedirMarca()) ? 1 : undefined,
+              aparelho: (typeof _v26Aparelho === 'function') ? _v26Aparelho() : undefined
             })
           };
           try { opcoes.signal = AbortSignal.timeout(45000); } catch(e) {}
@@ -842,6 +855,8 @@ v16 — 19/07/2026 — TOLERÂNCIA OFFLINE na sessão de 8h (ver bloco original 
 
           if (result.status === 'ok' && result.valido) {
             salvarSessao(result);
+            // v26 — com crachá, vai ao Portal e volta (a sessão já está salva)
+            if (typeof _v26LevarCracha === 'function' && _v26LevarCracha(result)) return;
             renderMenu(JSON.parse(lerSessaoStorage()));
             mostrarTela('menu');
           } else {
@@ -2153,5 +2168,138 @@ try{
 </script>
 
 <!-- ████ FIM BLOCOS PADRAO UX ████ -->
+<!-- ████ INICIO HUB v26 ████ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   v26 · O CRACHÁ DO CELULAR PARA A PLACA                          26/09/2026
+   Pedido do Fernando (tela M1 do estudo do relato pela placa): o Portal do
+   Cliente não pode mais mostrar "É da equipe Proper? Abrir no sistema" —
+   "é uma porta que o cliente tem pra tentar entrar no nosso sistema interno".
+   ⇒ o celular do técnico passa a ser RECONHECIDO pelo Portal:
+     · ao entrar com o PIN num CELULAR, o login pede ao GAS v149 um crachá
+       (`marca_portal:1`). O GAS confere o PIN, grava só o sha256 e devolve o
+       token;
+     · o Hub leva o token ao Portal UMA vez (#equipe=…&volta=…). O Portal o
+       guarda no domínio DELE e volta para cá. Leva ~2 s, uma vez a cada 30 dias;
+     · daí em diante, a câmera lê a placa → o Portal vê o crachá → abre direto
+       a ficha da máquina. Cliente não tem crachá, não vê link nenhum.
+   ⚠ Computador não pede crachá (placa se lê com o celular).
+   ⚠ iPhone com o ProperHub "na tela de início": o ícone tem armazenamento
+     SEPARADO do Safari, e a câmera abre o QR no Safari. Aí a ativação tem de
+     ser feita abrindo o ProperHub pelo Safari — a linha do menu explica.
+   ⚠ Falhou (GAS antigo, Supabase fora, SQL não rodou): o login segue normal,
+     sem crachá. O crachá nunca atrapalha a entrada.
+   ═══════════════════════════════════════════════════════════════════════════ */
+var V26_PORTAL = 'https://portal.propercompressores.com.br/';
+var V26_LS = 'proper_placa_cracha_em';
+var V26_DIAS = 30;
+
+function _v26Celular() {
+  try {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '') ||
+           (window.matchMedia && window.matchMedia('(pointer:coarse)').matches && window.innerWidth < 900);
+  } catch (e) { return false; }
+}
+function _v26IosIcone() {
+  try { return window.navigator.standalone === true; } catch (e) { return false; }
+}
+// (re-auditoria 26/09) No iPhone o Safari (ITP) apaga o armazenamento do Portal depois
+// de 7 dias sem visita — o crachá some de lá. Então no iPhone a janela é de 6 dias.
+function _v26Janela() {
+  try { return /iPhone|iPad|iPod/i.test(navigator.userAgent || '') ? 6 : V26_DIAS; } catch (e) { return V26_DIAS; }
+}
+function _v26UltimaAtivacao() {
+  try { var v = localStorage.getItem(V26_LS); return v ? new Date(v) : null; } catch (e) { return null; }
+}
+// O login pede o crachá? Celular, fora do ícone do iPhone, e sem ativação nos últimos 30 dias.
+function _v26PedirMarca() {
+  if (!_v26Celular() || _v26IosIcone()) return false;
+  var u = _v26UltimaAtivacao();
+  return !u || isNaN(u.getTime()) || (Date.now() - u.getTime()) > _v26Janela() * 864e5;
+}
+function _v26Aparelho() {
+  try { return String(navigator.userAgent || '').slice(0, 120); } catch (e) { return ''; }
+}
+// Leva o crachá ao Portal. true = saiu da página (quem chamou não desenha mais nada).
+function _v26LevarCracha(result) {
+  var tok = result && result.marca_portal;
+  if (!tok || !/^[0-9a-f]{64}$/.test(String(tok))) return false;
+  try { localStorage.setItem(V26_LS, new Date().toISOString()); } catch (e) {}
+  var volta = location.origin + location.pathname;
+  location.href = V26_PORTAL + '#equipe=' + encodeURIComponent(tok) + '&volta=' + encodeURIComponent(volta);
+  return true;
+}
+
+// A linha no menu: diz se o celular lê placa, e deixa reativar (com o PIN).
+function _v26LinhaPlaca() {
+  if (!_v26Celular()) return;
+  var grid = document.getElementById('modulos-grid');
+  if (!grid || !grid.parentNode) return;
+  var el = document.getElementById('v26Placa');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'v26Placa';
+    el.style.cssText = 'margin:18px auto 0;max-width:480px;padding:12px 14px;border-radius:12px;' +
+      'border:1px solid rgba(255,255,255,.08);background:var(--bg-card,#1F2937);color:var(--text-secondary,#9CA3AF);' +
+      'font:500 13px/1.45 Inter,system-ui,sans-serif';
+    grid.parentNode.insertBefore(el, grid.nextSibling);
+  }
+  var u = _v26UltimaAtivacao();
+  var teve = !!(u && !isNaN(u.getTime()));
+  // (auditoria 26/09) o crachá vale 45 dias no servidor e o Hub renova aos 30: passou
+  // disso, a linha NÃO diz mais "ativa" — diz que venceu e pede Reativar.
+  var ativo = teve && (Date.now() - u.getTime()) <= _v26Janela() * 864e5;
+  var dd = teve ? (('0' + u.getDate()).slice(-2) + '/' + ('0' + (u.getMonth() + 1)).slice(-2)) : '';
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+    '<span style="font-size:18px">📷</span><span style="flex:1;min-width:180px">' +
+    (ativo ? '<b style="color:var(--text-primary,#F9FAFB)">Leitura de placas ativa</b> neste celular desde ' + dd + '.' +
+             '<br><small>Se a placa pedir login do cliente, toque em Reativar.</small>'
+     : teve ? '<b style="color:var(--text-primary,#F9FAFB)">Leitura de placas vencida</b> (ativada em ' + dd + '). Toque em Reativar.'
+           : '<b style="color:var(--text-primary,#F9FAFB)">Leitura de placas</b> ainda não ativada neste celular.') +
+    (_v26IosIcone() ? '<br><small>No iPhone, abra o ProperHub pelo <b>Safari</b> (não pelo ícone) para ativar — a câmera abre as placas no Safari.</small>' : '') +
+    '</span><button type="button" id="v26Ativar" data-pw-off style="background:none;border:1px solid rgba(255,255,255,.2);' +
+    'color:var(--text-primary,#F9FAFB);border-radius:8px;padding:7px 12px;font:600 13px Inter,system-ui,sans-serif;cursor:pointer">' +
+    (teve ? 'Reativar' : 'Ativar') + '</button></div>' +
+    '<div id="v26Pin" style="display:none;margin-top:10px">' +
+    '<input id="v26PinIn" type="password" inputmode="numeric" autocomplete="off" name="v26_pin_nofill" data-lpignore="true" data-1p-ignore ' +
+    'placeholder="Seu PIN" style="width:130px;padding:9px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit">' +
+    ' <button type="button" id="v26PinOk" style="padding:9px 14px;border-radius:8px;border:0;background:var(--accent,#F1741F);color:#fff;font-weight:600;cursor:pointer">Confirmar</button>' +
+    '<div id="v26Err" style="margin-top:6px;color:#FCA5A5"></div></div>';
+  document.getElementById('v26Ativar').onclick = function () {
+    var p = document.getElementById('v26Pin'); p.style.display = 'block';
+    try { document.getElementById('v26PinIn').focus(); } catch (e) {}
+  };
+  document.getElementById('v26PinOk').onclick = _v26AtivarAgora;
+  document.getElementById('v26PinIn').onkeydown = function (e) { if (e.key === 'Enter') _v26AtivarAgora(); };
+}
+async function _v26AtivarAgora() {
+  var inp = document.getElementById('v26PinIn'), err = document.getElementById('v26Err'), bt = document.getElementById('v26PinOk');
+  var pin = String(inp.value || '').trim();
+  if (!pin) { err.textContent = 'Digite o PIN.'; return; }
+  bt.disabled = true; bt.textContent = 'Ativando…'; err.textContent = '';
+  try {
+    var hash = await hashPin(pin);
+    var op = { method: 'POST', body: JSON.stringify({ action: 'loginTecnico', pin_hash: hash, key: API_KEY, sem_os: 1,
+                                                      marca_portal: 1, aparelho: _v26Aparelho() }) };
+    try { op.signal = AbortSignal.timeout(45000); } catch (e) {}
+    var r = await (await fetch(GAS_URL, op)).json();
+    inp.value = '';
+    if (!(r && r.status === 'ok' && r.valido)) { err.textContent = (r && r.error) || 'PIN inválido.'; return; }
+    if (!_v26LevarCracha(r)) err.textContent = 'O servidor não entregou o crachá agora (GAS anterior ao v149 ou Supabase fora). Tente mais tarde.';
+  } catch (e) {
+    err.textContent = 'Sem conexão — não ativou. Tente de novo.';
+  } finally { bt.disabled = false; bt.textContent = 'Confirmar'; }
+}
+(function () {
+  try {
+    var orig = renderMenu;
+    renderMenu = function (s) { var r = orig.apply(this, arguments); try { _v26LinhaPlaca(); } catch (e) {} return r; };
+    var menu = document.getElementById('tela-menu');
+    if (menu && menu.style.display !== 'none') _v26LinhaPlaca();   // o init já desenhou o menu antes deste script
+  } catch (e) { try { console.warn('[v26] linha da placa', e); } catch (_) {} }
+})();
+</script>
+<!-- ████ FIM HUB v26 ████ -->
 </body>
 </html>
