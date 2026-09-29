@@ -215,8 +215,15 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   Bancada: _testes/T_PWAIT_V4.mjs · _testes/T_PCM_JANELAS_V201.mjs
   ══════════════════════════════════════════════════════════════════════
 -->
-<title>ProperHub · v28</title>
-<meta name="app-build" content="v28" data-date="2026-09-27">
+<!--
+  ProperHub v29 — 🚀 TURBO (D3): O TOKEN DO POSTGRES NASCE NO LOGIN   28/09/2026
+  Par: GAS v152 (loginTecnico devolve supa_token) · sw properhub-v29. Feito SOBRE o v28.
+  salvarSessao guarda `supa_token` na proper_session (o PCM V203 e o PCF V115 leem dali);
+  com GAS anterior ao v152 o campo não vem e nada muda. Sair e sessão vencida provada
+  apagam também a cópia pc_supa_token.
+-->
+<title>ProperHub · v29</title>
+<meta name="app-build" content="v29" data-date="2026-09-28">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -581,7 +588,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v28</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v29</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -760,6 +767,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
     function limparSessaoStorage() {
       try { localStorage.removeItem('proper_session'); } catch(e) {}
       try { sessionStorage.removeItem('proper_session'); } catch(e) {}
+      try { localStorage.removeItem('pc_supa_token'); } catch(e) {}   // v29: o token sai com a sessão
     }
 
     // ── v18: FEEDBACK DE ESPERA (padrão da casa) ──────────────────────────
@@ -977,8 +985,12 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
         nome_perfil: result.tecnico.perfil,
         modulos:     result.tecnico.modulos  || [],
         is_admin:    result.tecnico.is_admin || false,
-        token_at:    new Date().toISOString()
+        token_at:    new Date().toISOString(),
+        // v29 (TURBO · D3) — token-ponte do Postgres (sub = id do usuário, 12 h). Ausente
+        // com GAS anterior ao v152: aí o JSON.stringify some com a chave e nada muda.
+        supa_token:  result.supa_token || undefined
       };
+      try { localStorage.removeItem('pc_supa_token'); } catch(e) {}   // v29: cópia antiga (de outro usuário) nunca sobrevive a um login
       salvarSessaoStorage(JSON.stringify(session));
       try { _v27LoginOk(); } catch(e) {}   // v27
     }
