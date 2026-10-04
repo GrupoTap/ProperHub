@@ -222,8 +222,15 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   com GAS anterior ao v152 o campo não vem e nada muda. Sair e sessão vencida provada
   apagam também a cópia pc_supa_token.
 -->
-<title>ProperHub · v29</title>
-<meta name="app-build" content="v29" data-date="2026-09-28">
+<!--
+  ProperHub v30 — ⚡ O LOGIN SAI DO APPS SCRIPT   03/10/2026
+  O PIN vai primeiro à Edge Function `login` do Supabase (uma ida ao Postgres); o GAS fica de RESERVA.
+  Medido: o login de 03/10 18:55 ficou 369 s preso no Apps Script; 1 em 10 chamadas ao /exec passa de 18 s.
+  Par: SQL LOGIN_EDGE_2026-10-03 + Edge `login` (LOGIN_EDGE_V1) · sw properhub-v30. ZERO GAS. Feito SOBRE o v29.
+  Bloco: "████ INICIO HUB v30 ████" no fim do arquivo. Bancada: _testes/T_HUB_V30.mjs
+-->
+<title>ProperHub · v30</title>
+<meta name="app-build" content="v30" data-date="2026-10-03">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -588,7 +595,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v29</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v30</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -870,7 +877,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
           // ATENÇÃO: nenhum header aqui, de propósito. Sem Content-Type o POST
           // continua sendo "simple request" e não dispara preflight OPTIONS —
           // que o Apps Script não responde. Só o signal foi acrescentado.
-          const opcoes = {
+          const opcoes = {   // v30: o signal de 45 s entra só na hora do GAS (abaixo)
             method: 'POST',
             body: JSON.stringify({
               action:    'loginTecnico',
@@ -889,9 +896,26 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
               aparelho: (typeof _v26Aparelho === 'function') ? _v26Aparelho() : undefined
             })
           };
-          try { opcoes.signal = AbortSignal.timeout(45000); } catch(e) {}
-          const resp = await fetch(GAS_URL, opcoes);
-          const result = await resp.json();
+          // ═══ v30 · LOGIN PELA EDGE PRIMEIRO; o GAS é a RESERVA ═══════════════
+          // A Edge (Supabase) responde em ~1 s. Se ela não decidir em 2,5 s, o GAS
+          // sai em paralelo e vale o 1º login válido (_v30Login, no bloco v30).
+          // Não reconheceu / erro ⇒ o login de sempre no GAS, que, dando certo,
+          // ENSINA a Edge (o próximo login desta pessoa já sai rápido).
+          // ⚠ O prazo de 45 s do GAS é criado DENTRO de gasFn, na hora em que o
+          //   GAS sai — os segundos da Edge não saem do bolso dele.
+          const gasFn = async () => {
+            try { opcoes.signal = AbortSignal.timeout(45000); } catch(e) {}
+            const resp = await fetch(GAS_URL, opcoes);
+            const j = await resp.json();
+            if (j && j.status === 'ok' && j.valido) {
+              j.login_via = 'gas';
+              try { if (typeof _v30Aprender === 'function') _v30Aprender(j.supa_token); } catch (e30b) {}
+            }
+            return j;
+          };
+          const result = (typeof _v30Login === 'function')
+            ? await _v30Login(hash, { marca: (typeof _v26PedirMarca === 'function' && _v26PedirMarca()) }, gasFn)
+            : await gasFn();
 
           if (result.status === 'ok' && result.valido) {
             salvarSessao(result);
@@ -963,11 +987,13 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
         errorEl.style.color = '#9CA3AF';
         errorEl.textContent = 'Servidor respondeu em ' + seg + ' s (versão ' +
           ((j && j.version) || '?') + '). A rede deste aparelho está OK.';
+        try { if (typeof _v30TestarEdge === 'function') errorEl.textContent += ' ' + (await _v30TestarEdge()); } catch (e30) {}
       } catch (e2) {
         var seg2 = ((Date.now() - t0) / 1000).toFixed(1).replace('.', ',');
         errorEl.style.color = '';
         errorEl.textContent = 'Sem resposta em ' + seg2 + ' s (' +
           ((e2 && e2.name) || 'falha') + '). Tente outra rede (Wi‑Fi × dados) ou avise o Fernando.';
+        try { if (typeof _v30TestarEdge === 'function') errorEl.textContent += ' ' + (await _v30TestarEdge()); } catch (e30) {}
       } finally {
         if (el) { el.disabled = false; el.textContent = '🩺 Testar conexão'; }
       }
@@ -988,7 +1014,9 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
         token_at:    new Date().toISOString(),
         // v29 (TURBO · D3) — token-ponte do Postgres (sub = id do usuário, 12 h). Ausente
         // com GAS anterior ao v152: aí o JSON.stringify some com a chave e nada muda.
-        supa_token:  result.supa_token || undefined
+        supa_token:  result.supa_token || undefined,
+        // v30 — 'edge' (Supabase) ou 'gas' (reserva). Só diagnóstico: PCM/PCF não leem.
+        login_via:   result.login_via || undefined
       };
       try { localStorage.removeItem('pc_supa_token'); } catch(e) {}   // v29: cópia antiga (de outro usuário) nunca sobrevive a um login
       salvarSessaoStorage(JSON.stringify(session));
@@ -2606,10 +2634,17 @@ async function _v26AtivarAgora() {
   bt.disabled = true; bt.textContent = 'Ativando…'; err.textContent = '';
   try {
     var hash = await hashPin(pin);
-    var op = { method: 'POST', body: JSON.stringify({ action: 'loginTecnico', pin_hash: hash, key: API_KEY, sem_os: 1,
-                                                      marca_portal: 1, aparelho: _v26Aparelho() }) };
-    try { op.signal = AbortSignal.timeout(45000); } catch (e) {}
-    var r = await (await fetch(GAS_URL, op)).json();
+    // v30 — a Edge entrega o crachá da placa igual ao GAS; sem ele, a reserva é o GAS (como antes)
+    var r = null;
+    try { if (typeof _v30LoginEdge === 'function') r = await _v30LoginEdge(hash, { marca: true }); } catch (e30) { r = null; }
+    if (r && !r.marca_portal) r = null;
+    if (!r) {
+      var op = { method: 'POST', body: JSON.stringify({ action: 'loginTecnico', pin_hash: hash, key: API_KEY, sem_os: 1,
+                                                        marca_portal: 1, aparelho: _v26Aparelho() }) };
+      try { op.signal = AbortSignal.timeout(45000); } catch (e) {}
+      r = await (await fetch(GAS_URL, op)).json();
+      try { if (r && r.status === 'ok' && r.valido && typeof _v30Aprender === 'function') _v30Aprender(r.supa_token); } catch (e30b) {}
+    }
     inp.value = '';
     if (!(r && r.status === 'ok' && r.valido)) { err.textContent = (r && r.error) || 'PIN inválido.'; return; }
     if (!_v26LevarCracha(r)) err.textContent = 'O servidor não entregou o crachá agora (GAS anterior ao v149 ou Supabase fora). Tente mais tarde.';
@@ -2627,5 +2662,185 @@ async function _v26AtivarAgora() {
 })();
 </script>
 <!-- ████ FIM HUB v26 ████ -->
+<!-- ████ INICIO HUB v30 ████ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   v30 · O LOGIN SAI DO APPS SCRIPT                                03/10/2026
+   Fernando, 03/10 18:56 (prints): "⏳ O servidor está lento" e depois "O servidor
+   não respondeu em 45 s" — "isso ainda acontece com muita frequência".
+   🕳 MEDIDO no painel "Execuções do projeto" do Apps Script: aquele login (doPost
+      das 18:55:30) ficou 369 s PRESO e morreu em "Tempo limite atingido". Em 3 dias,
+      de 1.064 chamadas ao /exec: metade ≥ 5 s, 1 em 10 ≥ 18 s, cinco > 45 s. O
+      acionador de 5 min roda 24 s em média (até 200 s) no mesmo servidor. Não era
+      rede nem aparelho — e prazo maior não conserta servidor preso.
+   ⇒ v30: o PIN vai primeiro à Edge Function `login` do Supabase (uma ida ao
+      Postgres). Ela devolve o MESMO crachá que o GAS devolveria (pc_pin, pc_ph,
+      pc_login, módulos) — PCM, PCF e o banco não veem diferença.
+   🔑 O GAS NÃO SAI: é a RESERVA. A Edge só reconhece quem ela já "aprendeu"
+      (a digital do PIN que o próprio GAS assina em todo crachá). Não reconheceu,
+      demorou mais de 7 s, deu erro, freio, cadastro alterado → o Hub faz o login
+      de sempre no GAS e, se entrar, ENSINA a Edge em 2º plano. Ninguém fica
+      trancado por causa da Edge — no pior caso o login é tão lento quanto hoje.
+   🔑 Quem já está logado ensina sozinho: ao abrir o Hub com a sessão válida, o
+      crachá da sessão vai à Edge (uma vez por crachá). No dia seguinte ao
+      publicar, quase todo mundo já entra pela Edge sem ter passado pelo GAS.
+   ⚠ O PIN errado continua sendo dito pelo GAS (a Edge nunca diz "PIN errado":
+     não reconhecer pode ser só "ainda não aprendeu").
+   ⚠ Chamadas de 2º plano (acordar a Edge, ensinar) passam pelo PWAIT.silencioso:
+     não acendem a barra de espera.
+   Par: SQL LOGIN_EDGE_2026-10-03 + Edge `login` (LOGIN_EDGE_V1) · sw properhub-v30.
+   ═══════════════════════════════════════════════════════════════════════════ */
+var V30_EDGE = 'https://mxczeemglrehadjualvi.supabase.co/functions/v1/login';
+var V30_EDGE_MS = 7000;            // a Edge responde em ~0,3–1,5 s; 7 s cobre a partida fria com folga
+var V30_PARALELO_MS = 2500;        // (auditoria M3) Edge sem resposta em 2,5 s ⇒ o GAS sai JÁ, em paralelo:
+                                   //   o pior caso fica = hoje (+2,5 s no máximo), nunca +7 s
+var V30_LS_APRENDIDO = 'hub_v30_aprendido';
+
+function _v30Silencioso(fn) {
+  try { if (window.PWAIT && typeof PWAIT.silencioso === 'function') return PWAIT.silencioso(fn); } catch (e) {}
+  return fn();
+}
+function _v30Claims(tok) {
+  try {
+    var p = String(tok || '').split('.')[1];
+    if (!p) return null;
+    p = p.replace(/-/g, '+').replace(/_/g, '/');
+    while (p.length % 4) p += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(p))));
+  } catch (e) { return null; }
+}
+
+// Login pela Edge. Devolve o resultado NO FORMATO do loginTecnico do GAS quando entrou;
+// null em QUALQUER outro caso (quem chamou vai ao GAS).
+async function _v30LoginEdge(hash, opt) {
+  opt = opt || {};
+  if (!V30_EDGE || !/^[0-9a-f]{64}$/.test(String(hash || ''))) return null;
+  var corpo = { acao: 'login', pin_hash: hash,
+                aparelho: (typeof _v26Aparelho === 'function') ? _v26Aparelho() : '' };
+  if (opt.marca) corpo.marca = 1;
+  // ⚠ SEM cabeçalho Content-Type, de propósito: o POST fica "simple request" e não paga a ida
+  //   extra do preflight OPTIONS (a Edge lê o corpo como JSON de qualquer jeito).
+  var op = { method: 'POST', body: JSON.stringify(corpo) };
+  var ctl = null;
+  try { ctl = new AbortController(); op.signal = ctl.signal; } catch (e) {}
+  var t0 = Date.now(), relogio = null;
+  // prazo por RELÓGIO (não AbortSignal.timeout: iPhone com iOS < 16 não tem — auditoria B10)
+  var prazo = new Promise(function (_, rej) {
+    relogio = setTimeout(function () { try { if (ctl) ctl.abort(); } catch (e) {} var er = new Error('prazo'); er.name = 'TimeoutError'; rej(er); }, V30_EDGE_MS);
+  });
+  try {
+    var r = await Promise.race([fetch(V30_EDGE, op), prazo]);
+    var j = await Promise.race([r.json(), prazo]);
+    clearTimeout(relogio);
+    if (j && j.status === 'ok' && j.valido === true && j.tecnico && j.tecnico.id && j.supa_token) {
+      j.login_via = 'edge';
+      try { console.log('[v30] login pela Edge em ' + (Date.now() - t0) + ' ms'); } catch (e) {}
+      return j;
+    }
+    try { console.log('[v30] Edge não reconheceu (' + ((j && j.motivo) || r.status) + ') — reserva: GAS'); } catch (e) {}
+  } catch (e) {
+    try { console.log('[v30] Edge sem resposta (' + ((e && e.name) || 'erro') + ', ' + (Date.now() - t0) + ' ms) — reserva: GAS'); } catch (e2) {}
+  }
+  try { clearTimeout(relogio); } catch (e) {}
+  prazo.catch(function () {});
+  return null;
+}
+
+// A CORRIDA (auditoria M3): Edge primeiro; se ela não decidir em 2,5 s, o GAS sai em paralelo e
+// vale o 1º login VÁLIDO. `gasFn` devolve a promessa do JSON do GAS (pode rejeitar: falha de rede).
+// Edge disse "não" ⇒ espera só o GAS (que é quem diz "PIN inválido"). Os dois falharam ⇒ o erro do GAS.
+async function _v30Login(hash, opt, gasFn) {
+  var edgeP = _v30LoginEdge(hash, opt);                 // nunca rejeita: resultado ou null
+  // (2ª auditoria, N1) pedindo o crachá da PLACA, NADA de corrida: o login que perdesse ainda
+  //   gravaria o crachá dele e REVOGARIA o do vencedor (os dois revogam "os outros deste aparelho").
+  //   Acontece 1× a cada 30 dias por celular — aqui vale esperar a Edge decidir (até 7 s).
+  if (opt && opt.marca) { var so = await edgeP; return so || await gasFn(); }
+  var marca = {};
+  var primeiro = await Promise.race([edgeP, new Promise(function (res) { setTimeout(function () { res(marca); }, V30_PARALELO_MS); })]);
+  if (primeiro && primeiro !== marca) return primeiro;  // a Edge entrou
+  var gasP = gasFn();
+  if (primeiro === null) return await gasP;             // a Edge já disse "não": o GAS decide
+  return await new Promise(function (resolve, reject) {
+    var feito = false, edgeFim = false, gasFim = false, gasRes, gasErr, gasFalhou = false;
+    function fim(fn, v) { if (!feito) { feito = true; fn(v); } }
+    edgeP.then(function (e) {
+      edgeFim = true;
+      if (e) return fim(resolve, e);
+      if (gasFim) return gasFalhou ? fim(reject, gasErr) : fim(resolve, gasRes);
+    });
+    gasP.then(function (g) {
+      gasFim = true; gasRes = g;
+      if (g && g.status === 'ok' && g.valido) return fim(resolve, g);
+      if (edgeFim) return fim(resolve, g);              // os dois decidiram e só o GAS respondeu: vale o "não" dele
+    }, function (err) {
+      gasFim = true; gasFalhou = true; gasErr = err;
+      if (edgeFim) return fim(reject, err);
+    });
+  });
+}
+
+// Ensina a Edge com um crachá de login com PIN assinado pelo GAS (2º plano; falha não importa).
+function _v30Aprender(tok) {
+  try {
+    var c = _v30Claims(tok);
+    if (!c || c.pc_pin !== '1' || !c.pc_ph || !c.sub || c.pc_via === 'edge') return;
+    var marca = c.sub + '|' + (c.pc_login || c.iat || '') + '|' + c.pc_ph;
+    try { if (localStorage.getItem(V30_LS_APRENDIDO) === marca) return; } catch (e) {}
+    _v30Silencioso(function () {
+      var op = { method: 'POST', keepalive: true, body: JSON.stringify({ acao: 'aprender', cracha: tok }) };
+      try { op.signal = AbortSignal.timeout(15000); } catch (e) {}
+      return fetch(V30_EDGE, op).then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.ok === true) { try { localStorage.setItem(V30_LS_APRENDIDO, marca); } catch (e) {} }
+        try { console.log('[v30] aprender: ' + (j && j.ok ? (j.aprendeu ? 'aprendeu' : 'já sabia') : ('recusado: ' + (j && j.motivo)))); } catch (e) {}
+      }).catch(function () {});
+    });
+  } catch (e) {}
+}
+
+// Acorda a Edge enquanto a pessoa digita o PIN (fire-and-forget, silencioso).
+function _v30AcordarEdge() {
+  try {
+    _v30Silencioso(function () {
+      var op = { method: 'GET' };
+      try { op.signal = AbortSignal.timeout(8000); } catch (e) {}
+      return fetch(V30_EDGE + '?acao=ping', op).catch(function () {});
+    });
+  } catch (e) {}
+}
+
+// 🩺 Testar conexão: mede também o caminho do login rápido (mesma URL do login).
+async function _v30TestarEdge() {
+  var t0 = Date.now();
+  var op = { method: 'GET' };
+  try { op.signal = AbortSignal.timeout(10000); } catch (e) {}
+  try {
+    var r = await fetch(V30_EDGE + '?acao=ping', op);
+    var j = await r.json();
+    var s = ((Date.now() - t0) / 1000).toFixed(1).replace('.', ',');
+    return (j && j.ok) ? ('Login rápido respondeu em ' + s + ' s.') : ('Login rápido: resposta estranha em ' + s + ' s.');
+  } catch (e) {
+    return 'Login rápido sem resposta em ' + ((Date.now() - t0) / 1000).toFixed(1).replace('.', ',') + ' s (o login usa o servidor antigo).';
+  }
+}
+
+// Partida: na tela de PIN acorda a Edge; com sessão válida, ensina com o crachá dela.
+(function () {
+  try {
+    var login = document.getElementById('tela-login');
+    if (login && login.style.display !== 'none') _v30AcordarEdge();
+    setTimeout(function () {
+      try {
+        var raw = (typeof lerSessaoStorage === 'function') ? lerSessaoStorage() : null;
+        if (!raw) return;
+        var s = JSON.parse(raw);
+        if (!s || !s.supa_token || !s.token_at) return;
+        if (Date.now() - new Date(s.token_at).getTime() >= 8 * 3600e3) return;   // sessão vencida não ensina
+        _v30Aprender(s.supa_token);
+      } catch (e) {}
+    }, 1500);
+  } catch (e) { try { console.warn('[v30] partida', e); } catch (_) {} }
+})();
+</script>
+<!-- ████ FIM HUB v30 ████ -->
 </body>
 </html>
