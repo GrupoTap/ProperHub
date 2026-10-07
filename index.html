@@ -229,8 +229,16 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   Par: SQL LOGIN_EDGE_2026-10-03 + Edge `login` (LOGIN_EDGE_V1) · sw properhub-v30. ZERO GAS. Feito SOBRE o v29.
   Bloco: "████ INICIO HUB v30 ████" no fim do arquivo. Bancada: _testes/T_HUB_V30.mjs
 -->
-<title>ProperHub · v30</title>
-<meta name="app-build" content="v30" data-date="2026-10-03">
+<!--
+  ProperHub v31 — 🔑 O "SALVAR SENHA?" DO CHROME SAI DO HUB   07/10/2026
+  O login por PIN (pin-input) e o PIN de "Ativar leitura de placas" (v26PinIn) eram type=password: o Chrome
+  oferecia guardar o PIN e depois preenchia sozinho — num computador da oficina, entrava como a última pessoa.
+  Viram type=text + máscara (-webkit-text-security:disc) + guard anti-autofill. O fluxo do login não muda:
+  o PIN é lido pelo id, vira hash e sobe igual. Firefox 114+ também mascara.
+  Par: PCM V252 (os três PINs do PCM) · sw properhub-v31. Zero SQL, zero Apps Script. Feito SOBRE o v30.
+-->
+<title>ProperHub · v31</title>
+<meta name="app-build" content="v31" data-date="2026-10-07">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -383,6 +391,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
     }
 
     #pin-input {
+      -webkit-text-security: disc;  /* v31: máscara sem campo de senha (o Chrome deixa de oferecer "Salvar senha?") */
       width: 100%;
       background: var(--bg-card);
       border: 2px solid var(--border);
@@ -398,6 +407,9 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
     }
 
     #pin-input:focus { border-color: var(--accent); }
+    #pin-input:placeholder-shown { -webkit-text-security: none; }
+    #v26PinIn { -webkit-text-security: disc; }   /* v31 */
+    #v26PinIn:placeholder-shown { -webkit-text-security: none; }
 
     #pin-error {
       min-height: 20px;
@@ -595,16 +607,18 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v30</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v31</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
       <!-- v18 — autofocus: o campo de PIN é a primeira interação de TODO
            usuário do sistema; sem ele todo mundo paga um toque extra antes de
            o teclado abrir. -->
-      <input id="pin-input" type="password" inputmode="numeric"
+      <input id="pin-input" type="text" inputmode="numeric"
              maxlength="6" placeholder="Digite seu PIN"
-             autocomplete="off" autofocus
+             autocomplete="off" autofocus name="hub_pin_nofill"
+             data-lpignore="true" data-1p-ignore
+             autocorrect="off" autocapitalize="off" spellcheck="false"
              onkeydown="if(event.key==='Enter') fazerLogin()">
       <div id="pin-error" class="pin-error"></div>
     </div>
@@ -2616,7 +2630,8 @@ function _v26LinhaPlaca() {
     'color:var(--text-primary,#F9FAFB);border-radius:8px;padding:7px 12px;font:600 13px Inter,system-ui,sans-serif;cursor:pointer">' +
     (teve ? 'Reativar' : 'Ativar') + '</button></div>' +
     '<div id="v26Pin" style="display:none;margin-top:10px">' +
-    '<input id="v26PinIn" type="password" inputmode="numeric" autocomplete="off" name="v26_pin_nofill" data-lpignore="true" data-1p-ignore ' +
+    '<input id="v26PinIn" type="text" inputmode="numeric" autocomplete="off" name="v26_pin_nofill" data-lpignore="true" data-1p-ignore ' +
+    'autocorrect="off" autocapitalize="off" spellcheck="false" ' +
     'placeholder="Seu PIN" style="width:130px;padding:9px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit">' +
     ' <button type="button" id="v26PinOk" style="padding:9px 14px;border-radius:8px;border:0;background:var(--accent,#F1741F);color:#fff;font-weight:600;cursor:pointer">Confirmar</button>' +
     '<div id="v26Err" style="margin-top:6px;color:#FCA5A5"></div></div>';
