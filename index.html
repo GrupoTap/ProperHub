@@ -230,6 +230,9 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   Bloco: "████ INICIO HUB v30 ████" no fim do arquivo. Bancada: _testes/T_HUB_V30.mjs
 -->
 <!--
+  ProperHub v32 — 🧾 CARD "NOTAS FISCAIS" (22/10/2026, Bruno com Claude): abre ../ProperAdmin/emitir_nota.html; só admin e módulo
+  pcm_financeiro veem (para os outros não aparece). Mudança só no MODULOS, ORDEM_MODULOS e renderMenu. sw properhub-v32.
+
   ProperHub v31 — 🔑 O "SALVAR SENHA?" DO CHROME SAI DO HUB   07/10/2026
   O login por PIN (pin-input) e o PIN de "Ativar leitura de placas" (v26PinIn) eram type=password: o Chrome
   oferecia guardar o PIN e depois preenchia sozinho — num computador da oficina, entrava como a última pessoa.
@@ -237,8 +240,8 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   o PIN é lido pelo id, vira hash e sobe igual. Firefox 114+ também mascara.
   Par: PCM V252 (os três PINs do PCM) · sw properhub-v31. Zero SQL, zero Apps Script. Feito SOBRE o v30.
 -->
-<title>ProperHub · v31</title>
-<meta name="app-build" content="v31" data-date="2026-10-07">
+<title>ProperHub · v32</title>
+<meta name="app-build" content="v32" data-date="2026-10-22">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -607,7 +610,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v31</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v32</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -764,7 +767,10 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       pcm_completo:   { label: 'Administração',           url: '../ProperAdmin/index.html',            icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
       // v19 — agenda da equipe no celular (modo app do PCM). É o acesso "do
       // tamanho do vendedor": agenda e demandas, sem o resto da administração.
-      pcm_agenda:     { label: 'Agenda da equipe',        url: '../ProperAdmin/index.html?mobile=1',   icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' }
+      pcm_agenda:     { label: 'Agenda da equipe',        url: '../ProperAdmin/index.html?mobile=1',   icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+      // v32 (22/10/2026) — Notas fiscais (emissão pela Notaas). Só administrador e quem tem o módulo pcm_financeiro;
+      // para os outros o card nem aparece (não fica cadeado).
+      notas_fiscais:  { label: 'Notas fiscais',           url: '../ProperAdmin/emitir_nota.html',      icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z' },
     };
     // pcm_leitura e pcm_completo apontam para a mesma URL — módulo Administração aparece uma vez só no menu
 
@@ -1044,7 +1050,8 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       'pcf_preventiva',
       'forms_avulso',
       'pcm_agenda',     // v19 — antes da Administração: é o card de uso diário
-      'pcm_completo'
+      'pcm_completo',
+      'notas_fiscais'   // v32
     ];
 
     function renderMenu(session) {
@@ -1060,6 +1067,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       const setAcesso = new Set(modulos);
       if (temAdmin) setAcesso.add('pcm_completo');
       if (temAdmin) setAcesso.add('pcm_agenda');   // v19 — admin também vê a agenda de bolso
+      if (temAdmin || modulos.includes('pcm_financeiro')) setAcesso.add('notas_fiscais');   // v32
       // Pipeline visível para qualquer técnico de campo (inspeção ou preventiva)
       if (setAcesso.has('pcf_inspecao') || setAcesso.has('pcf_preventiva')) {
         setAcesso.add('pcf_pipeline');
@@ -1068,6 +1076,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       ORDEM_MODULOS.forEach(function(id) {
         if (!MODULOS[id]) return;
         const temAcesso = setAcesso.has(id);
+        if (id === 'notas_fiscais' && !temAcesso) return;   // v32 — sem acesso: o card não aparece
         grid.appendChild(criarCard(id, temAcesso));
       });
     }
