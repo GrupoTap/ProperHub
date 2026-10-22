@@ -231,7 +231,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
 -->
 <!--
   ProperHub v32 — 🧾 CARD "NOTAS FISCAIS" (22/10/2026, Bruno com Claude): abre ../ProperAdmin/emitir_nota.html; só admin e módulo
-  pcm_financeiro veem (para os outros não aparece). Mudança só no MODULOS, ORDEM_MODULOS e renderMenu. sw properhub-v32.
+  pcm_financeiro veem (para os outros não aparece). Mudança só no MODULOS, ORDEM_MODULOS e renderMenu. sw properhub-v32. Card Financeiro (financeiro.html), só administrador.
 
   ProperHub v31 — 🔑 O "SALVAR SENHA?" DO CHROME SAI DO HUB   07/10/2026
   O login por PIN (pin-input) e o PIN de "Ativar leitura de placas" (v26PinIn) eram type=password: o Chrome
@@ -771,6 +771,8 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       // v32 (22/10/2026) — Notas fiscais (emissão pela Notaas). Só administrador e quem tem o módulo pcm_financeiro;
       // para os outros o card nem aparece (não fica cadeado).
       notas_fiscais:  { label: 'Notas fiscais',           url: '../ProperAdmin/emitir_nota.html',      icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z' },
+      // v32 (22/10/2026) — Financeiro (sai do Omie hoje). Só administrador: o 19_ deixa o financeiro só para admin.
+      financeiro:     { label: 'Financeiro',              url: '../ProperAdmin/financeiro.html',       icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
     };
     // pcm_leitura e pcm_completo apontam para a mesma URL — módulo Administração aparece uma vez só no menu
 
@@ -1051,7 +1053,8 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       'forms_avulso',
       'pcm_agenda',     // v19 — antes da Administração: é o card de uso diário
       'pcm_completo',
-      'notas_fiscais'   // v32
+      'notas_fiscais',  // v32
+      'financeiro'      // v32
     ];
 
     function renderMenu(session) {
@@ -1068,6 +1071,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       if (temAdmin) setAcesso.add('pcm_completo');
       if (temAdmin) setAcesso.add('pcm_agenda');   // v19 — admin também vê a agenda de bolso
       if (temAdmin || modulos.includes('pcm_financeiro')) setAcesso.add('notas_fiscais');   // v32
+      if (temAdmin) setAcesso.add('financeiro');   // v32 — financeiro só para administrador
       // Pipeline visível para qualquer técnico de campo (inspeção ou preventiva)
       if (setAcesso.has('pcf_inspecao') || setAcesso.has('pcf_preventiva')) {
         setAcesso.add('pcf_pipeline');
@@ -1076,7 +1080,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       ORDEM_MODULOS.forEach(function(id) {
         if (!MODULOS[id]) return;
         const temAcesso = setAcesso.has(id);
-        if (id === 'notas_fiscais' && !temAcesso) return;   // v32 — sem acesso: o card não aparece
+        if ((id === 'notas_fiscais' || id === 'financeiro') && !temAcesso) return;   // v32 — sem acesso: o card não aparece
         grid.appendChild(criarCard(id, temAcesso));
       });
     }
