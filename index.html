@@ -230,6 +230,9 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   Bloco: "████ INICIO HUB v30 ████" no fim do arquivo. Bancada: _testes/T_HUB_V30.mjs
 -->
 <!--
+  ProperHub v33 — ⏸️ CARDS "NOTAS FISCAIS" E "FINANCEIRO" ESCONDIDOS (22/10/2026, 11h, Bruno com Claude): a virada do financeiro
+  foi adiada; o Omie continua. Só saíram da ORDEM_MODULOS; MODULOS e renderMenu continuam prontos. sw properhub-v33.
+
   ProperHub v32 — 🧾 CARD "NOTAS FISCAIS" (22/10/2026, Bruno com Claude): abre ../ProperAdmin/emitir_nota.html; só admin e módulo
   pcm_financeiro veem (para os outros não aparece). Mudança só no MODULOS, ORDEM_MODULOS e renderMenu. sw properhub-v32. Card Financeiro (financeiro.html), só administrador.
 
@@ -240,8 +243,8 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
   o PIN é lido pelo id, vira hash e sobe igual. Firefox 114+ também mascara.
   Par: PCM V252 (os três PINs do PCM) · sw properhub-v31. Zero SQL, zero Apps Script. Feito SOBRE o v30.
 -->
-<title>ProperHub · v32</title>
-<meta name="app-build" content="v32" data-date="2026-10-22">
+<title>ProperHub · v33</title>
+<meta name="app-build" content="v33" data-date="2026-10-22">
   <!-- v17 (item 8) — tratador global de erro: o Hub também não tinha nenhum. -->
   <script>
   (function(){
@@ -610,7 +613,7 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       <div class="logo-mark">P</div>
       <div class="logo-text">Proper<span>Hub</span></div>
     </div>
-    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v32</div>
+    <div class="login-sub" data-carimbo="ProperCare · Acesso unificado · {v}">ProperCare · Acesso unificado · v33</div>
 
     <div class="pin-container">
       <label class="pin-label" id="pin-label" for="pin-input">PIN de acesso</label>
@@ -1053,8 +1056,9 @@ ZERO GAS, ZERO SQL. Par: sw.js properhub-v26 para properhub-v27. Bancada: _teste
       'forms_avulso',
       'pcm_agenda',     // v19 — antes da Administração: é o card de uso diário
       'pcm_completo',
-      'notas_fiscais',  // v32
-      'financeiro'      // v32
+      // v33 (22/10/2026, 11h) — 'notas_fiscais' e 'financeiro' SAÍRAM da ordem: o Omie continua com o financeiro e as notas
+      // até o PCM ligar a ficha de faturamento ao emitir_nota.html. Os módulos e o acesso ficam prontos: para voltar, é só
+      // recolocar os dois nomes aqui (e subir a versão).
     ];
 
     function renderMenu(session) {
