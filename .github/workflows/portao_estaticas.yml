@@ -1,0 +1,31 @@
+# Portão de PR, parte rápida — ProperCare-backlog#41. CÓPIA IGUAL em cada repositório de código; a fonte é o backlog
+# (ferramentas/portao/publico/portao_estaticas.yml). Roda o código DA PR (aviso em ~1 min): sintaxe de cada <script>,
+# let/const repetido entre blocos, função 2× sem `// ⚠ SOBRESCREVE <nome>`. NÃO é o check obrigatório — o obrigatório é
+# `portão` (portao.yml), que confere o mesmo e mais, com a versão do backlog. Sem Secret.
+name: portao-estaticas
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portao-estaticas-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  estaticas:
+    name: estáticas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2           # o commit de merge da PR e o pai dele (a base): HEAD^1...HEAD = o que a PR muda
+          persist-credentials: false
+      - name: Estáticas (sintaxe, let/const repetido, função 2×)
+        env:
+          PORTAO_CACHE: ${{ runner.temp }}/portao
+        run: python3 .github/portao/portao_estatico.py --base HEAD^1
