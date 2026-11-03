@@ -1,0 +1,43 @@
+# Portão de PR — ProperCare-backlog#41. CÓPIA IGUAL em cada repositório de código; a fonte é o backlog
+# (ferramentas/portao/publico/portao.yml). Este é o check OBRIGATÓRIO `portão`:
+#  · pull_request_target: roda este arquivo e o .py da MAIN (a PR não consegue desligá-lo nem trocar o código) e NÃO
+#    baixa o código da PR — só manda repo, número e commit para o workflow `portao` do backlog PRIVADO, que confere tudo
+#    (estáticas, toda rpc existe no banco, toda action existe no GAS, fumaça do PCM, as cópias = a fonte) e devolve o
+#    veredito. Nada de banco nem detalhe vem para cá.
+#  · o token (PORTAO_TOKEN: token fino, só o ProperCare-backlog, permissão Actions) mora no Environment `portao`, liberado
+#    só para a `main`: workflow de outro branch (de uma PR) não o recebe.
+#  · arquivo próprio, sem outro gatilho: um job PULADO conta como verde para check obrigatório (por isso as estáticas
+#    rápidas moram em portao_estaticas.yml).
+# Vermelho = não dar merge. O nome do passo que reprovou aparece no log; o detalhe fica no link do backlog.
+name: portao
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portao-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  portao:
+    name: portão
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    environment: portao
+    steps:
+      - uses: actions/checkout@v4  # a MAIN deste repositório (pull_request_target): o código da PR não é baixado
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/portao
+      - name: Banco, GAS e fumaça (no backlog privado)
+        env:
+          PORTAO_TOKEN: ${{ secrets.PORTAO_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/portao/portao_estatico.py --chamar-backlog
